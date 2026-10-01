@@ -15,13 +15,16 @@ import {
   IconHandshake,
   IconHome,
   IconHotel,
+  IconInbox,
   IconKey,
   IconLayers,
   IconLogout,
   IconMenu,
   IconReceipt,
   IconTrend,
+  IconUser,
   IconWallet,
+  IconWrench,
 } from '@/components/icons';
 import { Spinner } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
@@ -58,6 +61,14 @@ const NAV: { section: string; capability?: Capability; items: NavItem[] }[] = [
     ],
   },
   {
+    section: 'Property management · RPM',
+    capability: 'rentals',
+    items: [
+      { href: '/workspace/rpm/maintenance', label: 'Maintenance', icon: IconWrench },
+      { href: '/workspace/rpm/inquiries', label: 'Rental enquiries', icon: IconInbox },
+    ],
+  },
+  {
     section: 'Sales · Iibka',
     capability: 'sales',
     items: [
@@ -65,6 +76,11 @@ const NAV: { section: string; capability?: Capability; items: NavItem[] }[] = [
       { href: '/workspace/sales/leads', label: 'Lead pipeline', icon: IconFunnel },
       { href: '/workspace/sales/transactions', label: 'Transactions', icon: IconHandshake },
     ],
+  },
+  {
+    section: 'Agents · Dalaaliin',
+    capability: 'sales',
+    items: [{ href: '/workspace/agent', label: 'Agent desk', icon: IconUser }],
   },
 ];
 
@@ -116,8 +132,13 @@ function Shell({ children }: { children: ReactNode }) {
 
   const sidebar = (
     <div className="flex h-full flex-col bg-brand-950 text-brand-100">
-      <div className="px-5 py-5">
-        <Logo inverted />
+      <div className="flex items-center justify-between px-5 py-5">
+        <Link href="/" aria-label="Guryeeye public website">
+          <Logo inverted />
+        </Link>
+        <Link href="/" className="rounded-md px-2 py-1 text-[11px] font-medium text-brand-200 hover:bg-white/10 hover:text-white">
+          Website ↗
+        </Link>
       </div>
       {hotels.length > 1 ? (
         <div className="px-4 pb-4">

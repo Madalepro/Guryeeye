@@ -193,6 +193,8 @@ export default function HubPage() {
               ['Properties', '/workspace/rentals'],
               ['Leases & tenants', '/workspace/rentals/leases'],
               ['Rent collection', '/workspace/rentals/payments'],
+              ['Maintenance (RPM)', '/workspace/rpm/maintenance'],
+              ['Enquiries', '/workspace/rpm/inquiries'],
             ]}
           />
         )}
@@ -219,6 +221,7 @@ export default function HubPage() {
               ['Listings', '/workspace/sales'],
               ['Lead pipeline', '/workspace/sales/leads'],
               ['Transactions', '/workspace/sales/transactions'],
+              ['Agent desk', '/workspace/agent'],
             ]}
           />
         )}
