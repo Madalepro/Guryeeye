@@ -76,6 +76,77 @@ export function BarLineChart({
   );
 }
 
+/** Stacked daily bars, one segment per series, with a hover tooltip. */
+export function StackedBarChart({
+  points,
+  series,
+  format,
+}: {
+  points: { label: string; values: number[] }[];
+  series: { label: string; className: string; swatch: string }[];
+  format: (v: number) => string;
+}) {
+  const [hover, setHover] = useState<number | null>(null);
+  const W = 720;
+  const H = 220;
+  const pad = { t: 12, r: 8, b: 24, l: 8 };
+  const innerW = W - pad.l - pad.r;
+  const innerH = H - pad.t - pad.b;
+  const totals = points.map((p) => p.values.reduce((s, v) => s + v, 0));
+  const max = Math.max(1e-9, ...totals);
+  const step = innerW / Math.max(1, points.length);
+  const barW = Math.max(2, step * 0.62);
+  const x = (i: number) => pad.l + i * step + step / 2;
+  const labelEvery = Math.ceil(points.length / 10);
+  const hovered = hover !== null ? points[hover] : undefined;
+
+  return (
+    <div className="relative">
+      <div className="mb-3 flex flex-wrap gap-4 text-xs text-ink-muted">
+        {series.map((s) => (
+          <span key={s.label} className="inline-flex items-center gap-1.5">
+            <span className={clsx('h-2.5 w-2.5 rounded-sm', s.swatch)} />
+            {s.label}
+          </span>
+        ))}
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="h-56 w-full" preserveAspectRatio="none" onMouseLeave={() => setHover(null)} role="img" aria-label="Revenue by service per day">
+        {[0.25, 0.5, 0.75, 1].map((f) => (
+          <line key={f} x1={pad.l} x2={W - pad.r} y1={pad.t + innerH * (1 - f)} y2={pad.t + innerH * (1 - f)} className="stroke-slate-100" />
+        ))}
+        {points.map((p, i) => {
+          let y = pad.t + innerH;
+          return (
+            <g key={p.label} onMouseEnter={() => setHover(i)} opacity={hover === null || hover === i ? 1 : 0.55}>
+              <rect x={x(i) - step / 2} y={pad.t} width={step} height={innerH} fill="transparent" />
+              {p.values.map((v, k) => {
+                const h = (v / max) * innerH;
+                y -= h;
+                return <rect key={series[k]!.label} x={x(i) - barW / 2} y={y} width={barW} height={Math.max(0, h)} className={series[k]!.className} />;
+              })}
+              {i % labelEvery === 0 && (
+                <text x={x(i)} y={H - 6} textAnchor="middle" className="fill-ink-subtle text-[10px]">{p.label.slice(5)}</text>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+      {hovered && hover !== null && (
+        <div
+          className="pointer-events-none absolute top-8 z-10 -translate-x-1/2 rounded-lg bg-ink px-3 py-2 text-xs text-white shadow-pop"
+          style={{ left: `${(x(hover) / W) * 100}%` }}
+        >
+          <p className="font-semibold">{hovered.label}</p>
+          {series.map((s, k) => (
+            <p key={s.label}>{s.label}: {format(hovered.values[k] ?? 0)}</p>
+          ))}
+          <p className="mt-1 border-t border-white/20 pt-1 font-semibold">Total: {format(totals[hover] ?? 0)}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Donut({ segments, size = 140, center }: { segments: { value: number; className: string; label: string }[]; size?: number; center?: ReactNode }) {
   const total = segments.reduce((s, x) => s + x.value, 0) || 1;
   const r = 52;

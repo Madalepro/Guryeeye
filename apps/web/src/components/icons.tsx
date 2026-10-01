@@ -78,3 +78,57 @@ export const IconDownload = (p: SVGProps<SVGSVGElement>) => (
     <path d="M12 3v12M7 10l5 5 5-5M4 21h16" />
   </svg>
 );
+export const IconHotel = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M4 21V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v17M16 9h3a1 1 0 0 1 1 1v11M2 21h20" />
+    <path d="M8 7h1M11 7h1M8 11h1M11 11h1M8 15h1M11 15h1M9 21v-3h2v3" />
+  </svg>
+);
+export const IconHome = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="m3 11 9-7 9 7" />
+    <path d="M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10" />
+  </svg>
+);
+export const IconKey = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <circle cx="8" cy="15" r="4" />
+    <path d="m11 12 9-9M17 6l3 3M14 9l2 2" />
+  </svg>
+);
+export const IconWallet = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M3 7a2 2 0 0 1 2-2h13v4" />
+    <path d="M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2Z" />
+    <circle cx="16" cy="14.5" r="1" />
+  </svg>
+);
+export const IconBriefcase = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <rect x="3" y="7" width="18" height="13" rx="2" />
+    <path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18" />
+  </svg>
+);
+export const IconFunnel = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M3 4h18l-7 9v6l-4 2v-8L3 4Z" />
+  </svg>
+);
+export const IconHandshake = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="m11 17 2 2a1.4 1.4 0 0 0 2-2M14 14l2.5 2.5a1.4 1.4 0 0 0 2-2L15 11" />
+    <path d="m21 11-4-4-3 1-3-3-2 2 4 4M3 11l4-4 3 2M7 15l2 2a1.4 1.4 0 0 0 2-2l-2-2" />
+  </svg>
+);
+export const IconLayers = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="m12 3 9 5-9 5-9-5 9-5Z" />
+    <path d="m3 13 9 5 9-5M3 17.5l9 5 9-5" />
+  </svg>
+);
+export const IconTrend = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M3 17 9 11l4 4 8-8" />
+    <path d="M15 7h6v6" />
+  </svg>
+);

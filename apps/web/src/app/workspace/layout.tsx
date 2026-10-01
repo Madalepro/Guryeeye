@@ -6,18 +6,70 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, type ComponentType, type ReactNode, type SVGProps } from 'react';
 import { Logo } from '@/components/brand';
-import { IconBroom, IconChart, IconDashboard, IconGrid, IconLogout, IconMenu, IconReceipt } from '@/components/icons';
+import {
+  IconBriefcase,
+  IconBroom,
+  IconChart,
+  IconFunnel,
+  IconGrid,
+  IconHandshake,
+  IconHome,
+  IconHotel,
+  IconKey,
+  IconLayers,
+  IconLogout,
+  IconMenu,
+  IconReceipt,
+  IconTrend,
+  IconWallet,
+} from '@/components/icons';
 import { Spinner } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
 import { HotelProvider, useHotel, type LiveStatus } from '@/lib/hotel';
 
-const NAV: { href: string; label: string; icon: ComponentType<SVGProps<SVGSVGElement>>; capability?: Capability }[] = [
-  { href: '/workspace', label: 'Overview', icon: IconDashboard },
-  { href: '/workspace/rooms', label: 'Room grid', icon: IconGrid },
-  { href: '/workspace/housekeeping', label: 'Housekeeping', icon: IconBroom, capability: 'housekeeping' },
-  { href: '/workspace/pos', label: 'Point of sale', icon: IconReceipt, capability: 'pos' },
-  { href: '/workspace/reports', label: 'Reports', icon: IconChart, capability: 'reports' },
+type NavItem = { href: string; label: string; icon: ComponentType<SVGProps<SVGSVGElement>>; capability?: Capability };
+
+const NAV: { section: string; capability?: Capability; items: NavItem[] }[] = [
+  {
+    section: 'Platform',
+    items: [
+      { href: '/workspace', label: 'Hub', icon: IconLayers },
+      { href: '/workspace/analytics', label: 'Analytics', icon: IconTrend, capability: 'analytics' },
+    ],
+  },
+  {
+    section: 'Hotel management',
+    capability: 'hotel',
+    items: [
+      { href: '/workspace/hotel', label: 'Hotel overview', icon: IconHotel },
+      { href: '/workspace/rooms', label: 'Room grid', icon: IconGrid },
+      { href: '/workspace/housekeeping', label: 'Housekeeping', icon: IconBroom, capability: 'housekeeping' },
+      { href: '/workspace/pos', label: 'Point of sale', icon: IconReceipt, capability: 'pos' },
+      { href: '/workspace/reports', label: 'Hotel reports', icon: IconChart, capability: 'reports' },
+    ],
+  },
+  {
+    section: 'Rentals · Guryaha Kirada',
+    capability: 'rentals',
+    items: [
+      { href: '/workspace/rentals', label: 'Properties', icon: IconHome },
+      { href: '/workspace/rentals/leases', label: 'Leases & tenants', icon: IconKey },
+      { href: '/workspace/rentals/payments', label: 'Rent collection', icon: IconWallet },
+    ],
+  },
+  {
+    section: 'Sales · Iibka',
+    capability: 'sales',
+    items: [
+      { href: '/workspace/sales', label: 'Listings', icon: IconBriefcase },
+      { href: '/workspace/sales/leads', label: 'Lead pipeline', icon: IconFunnel },
+      { href: '/workspace/sales/transactions', label: 'Transactions', icon: IconHandshake },
+    ],
+  },
 ];
+
+/** Routes whose nav item should only match exactly, because child routes have their own item. */
+const EXACT = new Set(['/workspace', '/workspace/rentals', '/workspace/sales']);
 
 const ROLE_LABEL: Record<string, string> = {
   PLATFORM_ADMIN: 'Platform admin',
@@ -26,6 +78,8 @@ const ROLE_LABEL: Record<string, string> = {
   FRONT_DESK: 'Front desk',
   HOUSEKEEPER: 'Housekeeping',
   POS_CASHIER: 'Cashier',
+  PROPERTY_MANAGER: 'Property manager',
+  SALES_AGENT: 'Sales agent',
 };
 
 function LiveIndicator({ status }: { status: LiveStatus }) {
@@ -55,7 +109,10 @@ function Shell({ children }: { children: ReactNode }) {
   useEffect(() => setMobileOpen(false), [pathname]);
 
   if (!user) return null;
-  const nav = NAV.filter((n) => !n.capability || hasCapability(user.role, n.capability));
+  const can = (c?: Capability) => !c || hasCapability(user.role, c);
+  const sections = NAV.filter((s) => can(s.capability))
+    .map((s) => ({ ...s, items: s.items.filter((i) => can(i.capability)) }))
+    .filter((s) => s.items.length > 0);
 
   const sidebar = (
     <div className="flex h-full flex-col bg-brand-950 text-brand-100">
@@ -65,8 +122,8 @@ function Shell({ children }: { children: ReactNode }) {
       {hotels.length > 1 ? (
         <div className="px-4 pb-4">
           <select
-            name="hotelSelect"
-            aria-label="Select hotel"
+            name="accountSelect"
+            aria-label="Select business account"
             className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brand-400"
             value={hotel?.id ?? ''}
             onChange={(e) => selectHotel(e.target.value)}
@@ -82,29 +139,34 @@ function Shell({ children }: { children: ReactNode }) {
         hotel && (
           <div className="mx-4 mb-4 rounded-lg bg-white/5 px-3 py-2">
             <p className="truncate text-sm font-medium text-white">{hotel.name}</p>
-            <p className="text-xs text-brand-200/70">
-              {hotel.city} · {hotel.roomCount} rooms
-            </p>
+            <p className="text-xs text-brand-200/70">{hotel.city}, {hotel.country}</p>
           </div>
         )
       )}
-      <nav className="flex-1 space-y-0.5 px-3">
-        {nav.map((n) => {
-          const active = n.href === '/workspace' ? pathname === n.href : pathname.startsWith(n.href);
-          return (
-            <Link
-              key={n.href}
-              href={n.href}
-              className={clsx(
-                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition',
-                active ? 'bg-brand-700 text-white shadow-sm' : 'text-brand-100/80 hover:bg-white/5 hover:text-white',
-              )}
-            >
-              <n.icon />
-              {n.label}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 space-y-5 overflow-y-auto px-3 pb-4 scrollbar-thin">
+        {sections.map((s) => (
+          <div key={s.section}>
+            <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-brand-200/50">{s.section}</p>
+            <div className="space-y-0.5">
+              {s.items.map((n) => {
+                const active = EXACT.has(n.href) ? pathname === n.href : pathname.startsWith(n.href);
+                return (
+                  <Link
+                    key={n.href}
+                    href={n.href}
+                    className={clsx(
+                      'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition',
+                      active ? 'bg-brand-700 text-white shadow-sm' : 'text-brand-100/80 hover:bg-white/5 hover:text-white',
+                    )}
+                  >
+                    <n.icon />
+                    {n.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
       <div className="border-t border-white/10 p-4">
         <div className="flex items-center gap-3">
@@ -146,10 +208,10 @@ function Shell({ children }: { children: ReactNode }) {
               <span className="font-medium text-ink">{hotel.name}</span> · {hotel.city}, {hotel.country}
             </>
           ) : (
-            'Loading hotel…'
+            'Loading account…'
           )}
         </p>
-        <LiveIndicator status={live} />
+        {can('hotel') ? <LiveIndicator status={live} /> : <span />}
       </header>
       <main className="px-4 py-6 sm:px-8 sm:py-8">
         {hotel ? (
@@ -181,7 +243,7 @@ export default function WorkspaceLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <HotelProvider>
+    <HotelProvider realtime={hasCapability(user.role, 'hotel')}>
       <Shell>{children}</Shell>
     </HotelProvider>
   );

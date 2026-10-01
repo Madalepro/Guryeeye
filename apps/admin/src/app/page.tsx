@@ -2,7 +2,7 @@
 
 import { formatMoney, formatPercent, type CreateHotelRequest, type PlatformOverview } from '@guryeeye/shared';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { api, TOKEN_KEY } from '@/lib/api';
 
 const EMPTY_HOTEL: CreateHotelRequest = {
@@ -15,11 +15,46 @@ const EMPTY_HOTEL: CreateHotelRequest = {
   taxRateBps: 1000,
 };
 
-function Kpi({ label, value }: { label: string; value: string | number }) {
+type Tab = 'overview' | 'hotels' | 'rentals' | 'sales';
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'overview', label: 'Platform overview' },
+  { id: 'hotels', label: 'Hotel management' },
+  { id: 'rentals', label: 'Rentals · Guryaha Kirada' },
+  { id: 'sales', label: 'Sales · Iibka' },
+];
+
+function Kpi({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
       <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">{label}</p>
       <p className="mt-2 font-display text-2xl font-semibold tabular-nums">{value}</p>
+      {hint && <p className="mt-1 text-xs text-ink-subtle">{hint}</p>}
+    </div>
+  );
+}
+
+function Table({ head, rows }: { head: { label: string; right?: boolean }[]; rows: { key: string; cells: ReactNode[] }[] }) {
+  return (
+    <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-card">
+      <table className="w-full text-left text-sm">
+        <thead className="bg-slate-50 text-xs uppercase tracking-wide text-ink-muted">
+          <tr>
+            {head.map((h) => (
+              <th key={h.label} className={`px-5 py-3 font-medium ${h.right ? 'text-right' : ''}`}>{h.label}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {rows.map((r) => (
+            <tr key={r.key} className="hover:bg-slate-50/60">
+              {r.cells.map((c, i) => (
+                <td key={i} className={`px-5 py-3 ${head[i]?.right ? 'text-right tabular-nums' : ''}`}>{c}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -31,6 +66,7 @@ export default function AdminDashboard() {
   const [form, setForm] = useState<CreateHotelRequest>(EMPTY_HOTEL);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [tab, setTab] = useState<Tab>('overview');
 
   const load = useCallback(async () => {
     try {
@@ -58,7 +94,7 @@ export default function AdminDashboard() {
       setShowForm(false);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not create hotel');
+      setError(err instanceof Error ? err.message : 'Could not create account');
     } finally {
       setSaving(false);
     }
@@ -88,11 +124,11 @@ export default function AdminDashboard() {
       <main className="mx-auto max-w-6xl px-6 py-8">
         <div className="mb-6 flex items-end justify-between">
           <div>
-            <h1 className="font-display text-2xl font-semibold">Platform overview</h1>
-            <p className="mt-1 text-sm text-ink-muted">All properties on Guryeeye · trailing 30 days</p>
+            <h1 className="font-display text-2xl font-semibold">Platform admin</h1>
+            <p className="mt-1 text-sm text-ink-muted">Hotels, rentals and sales across every Guryeeye account · trailing 30 days</p>
           </div>
           <button onClick={() => setShowForm((s) => !s)} className="rounded-lg bg-sand-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-sand-600">
-            {showForm ? 'Cancel' : 'Onboard hotel'}
+            {showForm ? 'Cancel' : 'Onboard account'}
           </button>
         </div>
 
@@ -101,7 +137,7 @@ export default function AdminDashboard() {
         {showForm && (
           <form onSubmit={createHotel} className="mb-6 grid gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-card sm:grid-cols-4">
             <div className="sm:col-span-2">
-              <label className="label" htmlFor="name">Hotel name</label>
+              <label className="label" htmlFor="name">Account / hotel name</label>
               <input id="name" className="input" required value={form.name} onChange={(e) => set('name', e.target.value)} />
             </div>
             <div className="sm:col-span-2">
@@ -130,7 +166,7 @@ export default function AdminDashboard() {
             </div>
             <div className="flex items-end">
               <button type="submit" disabled={saving} className="w-full rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-60">
-                {saving ? 'Creating…' : 'Create hotel'}
+                {saving ? 'Creating…' : 'Create account'}
               </button>
             </div>
           </form>
@@ -138,48 +174,129 @@ export default function AdminDashboard() {
 
         {data && (
           <>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-              <Kpi label="Hotels" value={data.hotels} />
-              <Kpi label="Rooms" value={data.rooms} />
-              <Kpi label="Active users" value={data.users} />
-              <Kpi label="Active bookings" value={data.activeReservations} />
-              <Kpi label="Revenue (30d)" value={formatMoney(data.revenueLast30DaysCents)} />
-            </div>
+            <nav className="mb-6 flex flex-wrap gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm" aria-label="Admin sections">
+              {TABS.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTab(t.id)}
+                  aria-current={tab === t.id ? 'page' : undefined}
+                  className={`rounded-lg px-4 py-2 text-sm font-medium transition ${tab === t.id ? 'bg-brand-700 text-white shadow-sm' : 'text-ink-muted hover:bg-slate-50 hover:text-ink'}`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </nav>
 
-            <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-slate-50 text-xs uppercase tracking-wide text-ink-muted">
-                  <tr>
-                    <th className="px-5 py-3 font-medium">Hotel</th>
-                    <th className="px-5 py-3 font-medium">Location</th>
-                    <th className="px-5 py-3 text-right font-medium">Rooms</th>
-                    <th className="px-5 py-3 font-medium">Occupancy (30d)</th>
-                    <th className="px-5 py-3 text-right font-medium">Revenue (30d)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {data.hotelStats.map((h) => (
-                    <tr key={h.id} className="hover:bg-slate-50/60">
-                      <td className="px-5 py-3">
-                        <p className="font-medium">{h.name}</p>
-                        <p className="text-xs text-ink-subtle">{h.slug}</p>
-                      </td>
-                      <td className="px-5 py-3 text-ink-muted">{h.city}, {h.country}</td>
-                      <td className="px-5 py-3 text-right tabular-nums">{h.roomCount}</td>
-                      <td className="px-5 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className="h-2 w-28 rounded-full bg-slate-100">
-                            <div className="h-2 rounded-full bg-brand-500" style={{ width: `${Math.min(100, h.occupancyRate * 100)}%` }} />
-                          </div>
-                          <span className="tabular-nums text-ink-muted">{formatPercent(h.occupancyRate)}</span>
+            {tab === 'overview' && (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <Kpi
+                    label="Combined revenue (30d)"
+                    value={formatMoney(data.revenueLast30DaysCents + data.rentals.collectedLast30DaysCents + data.sales.commissionLast30DaysCents)}
+                    hint="Hotels + rent collected + sales commission"
+                  />
+                  <Kpi label="Hotels" value={formatMoney(data.revenueLast30DaysCents)} hint={`${data.hotels} properties · ${data.rooms} rooms`} />
+                  <Kpi label="Rentals" value={formatMoney(data.rentals.collectedLast30DaysCents)} hint={`${data.rentals.occupiedUnits}/${data.rentals.units} units let`} />
+                  <Kpi label="Sales commission" value={formatMoney(data.sales.commissionLast30DaysCents)} hint={`${data.sales.soldLast30Days} sold · ${data.sales.activeListings} on market`} />
+                </div>
+                <Table
+                  head={[
+                    { label: 'Account' },
+                    { label: 'Hotel revenue', right: true },
+                    { label: 'Rental units', right: true },
+                    { label: 'Rent collected', right: true },
+                    { label: 'Listings', right: true },
+                    { label: 'Sales commission', right: true },
+                  ]}
+                  rows={data.accountStats.map((a) => ({
+                    key: a.id,
+                    cells: [
+                      <div key="n"><p className="font-medium">{a.name}</p><p className="text-xs text-ink-subtle">{a.city}</p></div>,
+                      formatMoney(a.hotelRevenueCents, a.currency),
+                      a.rentalUnits,
+                      formatMoney(a.rentCollectedCents, a.currency),
+                      a.activeListings,
+                      formatMoney(a.salesCommissionCents, a.currency),
+                    ],
+                  }))}
+                />
+                <p className="mt-3 text-xs text-ink-subtle">{data.users} active users across the platform.</p>
+              </>
+            )}
+
+            {tab === 'hotels' && (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <Kpi label="Hotels" value={data.hotels} />
+                  <Kpi label="Rooms" value={data.rooms} />
+                  <Kpi label="Active bookings" value={data.activeReservations} />
+                  <Kpi label="Revenue (30d)" value={formatMoney(data.revenueLast30DaysCents)} />
+                </div>
+                <Table
+                  head={[{ label: 'Hotel' }, { label: 'Location' }, { label: 'Rooms', right: true }, { label: 'Occupancy (30d)' }, { label: 'Revenue (30d)', right: true }]}
+                  rows={data.hotelStats.map((h) => ({
+                    key: h.id,
+                    cells: [
+                      <div key="n"><p className="font-medium">{h.name}</p><p className="text-xs text-ink-subtle">{h.slug}</p></div>,
+                      <span key="l" className="text-ink-muted">{h.city}, {h.country}</span>,
+                      h.roomCount,
+                      <div key="o" className="flex items-center gap-3">
+                        <div className="h-2 w-28 rounded-full bg-slate-100">
+                          <div className="h-2 rounded-full bg-brand-500" style={{ width: `${Math.min(100, h.occupancyRate * 100)}%` }} />
                         </div>
-                      </td>
-                      <td className="px-5 py-3 text-right font-medium tabular-nums">{formatMoney(h.revenueLast30DaysCents, h.currency)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                        <span className="tabular-nums text-ink-muted">{formatPercent(h.occupancyRate)}</span>
+                      </div>,
+                      <span key="r" className="font-medium">{formatMoney(h.revenueLast30DaysCents, h.currency)}</span>,
+                    ],
+                  }))}
+                />
+              </>
+            )}
+
+            {tab === 'rentals' && (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <Kpi label="Properties" value={data.rentals.properties} hint={`${data.rentals.units} units`} />
+                  <Kpi label="Unit occupancy" value={formatPercent(data.rentals.units ? data.rentals.occupiedUnits / data.rentals.units : 0)} hint={`${data.rentals.activeLeases} active leases`} />
+                  <Kpi label="Rent collected (30d)" value={formatMoney(data.rentals.collectedLast30DaysCents)} />
+                  <Kpi label="Outstanding rent" value={formatMoney(data.rentals.outstandingCents)} />
+                </div>
+                <Table
+                  head={[{ label: 'Account' }, { label: 'Rental units', right: true }, { label: 'Rent collected (30d)', right: true }]}
+                  rows={data.accountStats.map((a) => ({
+                    key: a.id,
+                    cells: [
+                      <div key="n"><p className="font-medium">{a.name}</p><p className="text-xs text-ink-subtle">{a.city}</p></div>,
+                      a.rentalUnits,
+                      formatMoney(a.rentCollectedCents, a.currency),
+                    ],
+                  }))}
+                />
+              </>
+            )}
+
+            {tab === 'sales' && (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <Kpi label="Listings on market" value={data.sales.activeListings} />
+                  <Kpi label="Open buyer leads" value={data.sales.openLeads} />
+                  <Kpi label="Sales volume (30d)" value={formatMoney(data.sales.volumeLast30DaysCents)} hint={`${data.sales.soldLast30Days} properties sold`} />
+                  <Kpi label="Commission (30d)" value={formatMoney(data.sales.commissionLast30DaysCents)} />
+                </div>
+                <Table
+                  head={[{ label: 'Account' }, { label: 'Listings on market', right: true }, { label: 'Commission (30d)', right: true }]}
+                  rows={data.accountStats.map((a) => ({
+                    key: a.id,
+                    cells: [
+                      <div key="n"><p className="font-medium">{a.name}</p><p className="text-xs text-ink-subtle">{a.city}</p></div>,
+                      a.activeListings,
+                      formatMoney(a.salesCommissionCents, a.currency),
+                    ],
+                  }))}
+                />
+              </>
+            )}
           </>
         )}
       </main>

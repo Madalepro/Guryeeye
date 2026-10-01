@@ -19,7 +19,8 @@ interface HotelState {
 const HotelContext = createContext<HotelState | null>(null);
 const SELECTED_KEY = 'guryeeye.hotel';
 
-export function HotelProvider({ children }: { children: ReactNode }) {
+/** `realtime` opens the hotel event stream; roles without hotel access (rentals, sales) skip it. */
+export function HotelProvider({ children, realtime = true }: { children: ReactNode; realtime?: boolean }) {
   const [hotels, setHotels] = useState<HotelSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [live, setLive] = useState<LiveStatus>('connecting');
@@ -34,7 +35,7 @@ export function HotelProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!selectedId) return;
+    if (!selectedId || !realtime) return;
     let source: EventSource | null = null;
     let retry: ReturnType<typeof setTimeout> | undefined;
     let attempt = 0;
@@ -71,7 +72,7 @@ export function HotelProvider({ children }: { children: ReactNode }) {
       clearTimeout(retry);
       source?.close();
     };
-  }, [selectedId]);
+  }, [selectedId, realtime]);
 
   const value = useMemo<HotelState>(
     () => ({
