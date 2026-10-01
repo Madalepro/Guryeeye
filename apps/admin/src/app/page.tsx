@@ -15,10 +15,11 @@ const EMPTY_HOTEL: CreateHotelRequest = {
   taxRateBps: 1000,
 };
 
-type Tab = 'overview' | 'hotels' | 'rentals' | 'sales';
+type Tab = 'overview' | 'marketplace' | 'hotels' | 'rentals' | 'sales';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'overview', label: 'Platform overview' },
+  { id: 'marketplace', label: 'Marketplace & RPM' },
   { id: 'hotels', label: 'Hotel management' },
   { id: 'rentals', label: 'Rentals · Guryaha Kirada' },
   { id: 'sales', label: 'Sales · Iibka' },
@@ -97,6 +98,15 @@ export default function AdminDashboard() {
       setError(err instanceof Error ? err.message : 'Could not create account');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function toggleVerified(id: string, verified: boolean) {
+    try {
+      await api.admin.setVerified(id, verified);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not update account');
     }
   }
 
@@ -222,6 +232,43 @@ export default function AdminDashboard() {
                   }))}
                 />
                 <p className="mt-3 text-xs text-ink-subtle">{data.users} active users across the platform.</p>
+              </>
+            )}
+
+            {tab === 'marketplace' && (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                  <Kpi label="Public rentals" value={data.marketplace.forRent} hint="Vacant units on the website" />
+                  <Kpi label="Public sales" value={data.marketplace.forSale} hint="Active listings on the website" />
+                  <Kpi label="Projects" value={data.marketplace.projects} />
+                  <Kpi label="Open maintenance" value={data.marketplace.openMaintenance} hint="Property management · RPM" />
+                  <Kpi label="New rental enquiries" value={data.marketplace.newInquiries} />
+                </div>
+                <Table
+                  head={[{ label: 'Account' }, { label: 'Status' }, { label: 'Listings on market', right: true }, { label: 'Rental units', right: true }, { label: 'Website visibility', right: true }]}
+                  rows={data.accountStats.map((a) => ({
+                    key: a.id,
+                    cells: [
+                      <div key="n"><p className="font-medium">{a.name}</p><p className="text-xs text-ink-subtle">{a.city}</p></div>,
+                      a.verified ? (
+                        <span key="s" className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">Verified</span>
+                      ) : (
+                        <span key="s" className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-amber-200">Pending review</span>
+                      ),
+                      a.activeListings,
+                      a.rentalUnits,
+                      <button
+                        key="v"
+                        type="button"
+                        onClick={() => void toggleVerified(a.id, !a.verified)}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${a.verified ? 'border border-slate-200 text-ink-muted hover:bg-slate-50' : 'bg-brand-700 text-white hover:bg-brand-800'}`}
+                      >
+                        {a.verified ? 'Revoke' : 'Verify'}
+                      </button>,
+                    ],
+                  }))}
+                />
+                <p className="mt-3 text-xs text-ink-subtle">Verified accounts carry a “Verified” badge on their public listings. Self-registered accounts start as pending review.</p>
               </>
             )}
 
