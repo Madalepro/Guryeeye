@@ -1,0 +1,80 @@
+import type { SVGProps } from 'react';
+
+const base = (props: SVGProps<SVGSVGElement>) => ({
+  viewBox: '0 0 24 24',
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 1.75,
+  strokeLinecap: 'round' as const,
+  strokeLinejoin: 'round' as const,
+  'aria-hidden': true,
+  className: 'h-5 w-5',
+  ...props,
+});
+
+export const IconDashboard = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <rect x="3" y="3" width="7" height="9" rx="1.5" />
+    <rect x="14" y="3" width="7" height="5" rx="1.5" />
+    <rect x="14" y="12" width="7" height="9" rx="1.5" />
+    <rect x="3" y="16" width="7" height="5" rx="1.5" />
+  </svg>
+);
+export const IconGrid = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M3 21V8l9-5 9 5v13" />
+    <path d="M9 21v-6h6v6M7 11h2M15 11h2" />
+  </svg>
+);
+export const IconBroom = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="m14 4 6 6M17 7l-6 6" />
+    <path d="M11 13 4 20h6l3-3M11 13l3 3" />
+  </svg>
+);
+export const IconReceipt = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2V3Z" />
+    <path d="M9 8h6M9 12h6M9 16h3" />
+  </svg>
+);
+export const IconChart = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M3 21h18" />
+    <rect x="5" y="11" width="3" height="7" rx="0.5" />
+    <rect x="10.5" y="6" width="3" height="12" rx="0.5" />
+    <rect x="16" y="13" width="3" height="5" rx="0.5" />
+  </svg>
+);
+export const IconLogout = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3" />
+  </svg>
+);
+export const IconMenu = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M4 6h16M4 12h16M4 18h16" />
+  </svg>
+);
+export const IconSearch = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <circle cx="11" cy="11" r="7" />
+    <path d="m20 20-3.5-3.5" />
+  </svg>
+);
+export const IconUser = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <circle cx="12" cy="8" r="4" />
+    <path d="M4 21a8 8 0 0 1 16 0" />
+  </svg>
+);
+export const IconSparkle = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6" />
+  </svg>
+);
+export const IconDownload = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M12 3v12M7 10l5 5 5-5M4 21h16" />
+  </svg>
+);

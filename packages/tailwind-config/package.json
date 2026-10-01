@@ -4,8 +4,10 @@
   "private": true,
   "description": "Guryeeye brand design tokens as a Tailwind CSS preset",
   "main": "preset.js",
+  "types": "preset.d.ts",
   "files": [
-    "preset.js"
+    "preset.js",
+    "preset.d.ts"
   ],
   "scripts": {
     "build": "node -e \"require('./preset.js')\"",
