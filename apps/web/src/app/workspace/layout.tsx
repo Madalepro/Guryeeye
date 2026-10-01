@@ -65,6 +65,7 @@ function Shell({ children }: { children: ReactNode }) {
       {hotels.length > 1 ? (
         <div className="px-4 pb-4">
           <select
+            name="hotelSelect"
             aria-label="Select hotel"
             className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brand-400"
             value={hotel?.id ?? ''}

@@ -146,9 +146,9 @@ export default function RoomGridPage() {
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-subtle">
             <IconSearch className="h-4 w-4" />
           </span>
-          <input className="input pl-9" placeholder="Search room, guest or room type…" value={query} onChange={(e) => setQuery(e.target.value)} />
+          <input name="roomSearch" aria-label="Search rooms" className="input pl-9" placeholder="Search room, guest or room type…" value={query} onChange={(e) => setQuery(e.target.value)} />
         </label>
-        <select className="input sm:w-44" aria-label="Housekeeping filter" value={cleanFilter} onChange={(e) => setCleanFilter(e.target.value as Cleanliness | 'ALL')}>
+        <select name="cleanlinessFilter" className="input sm:w-44" aria-label="Housekeeping filter" value={cleanFilter} onChange={(e) => setCleanFilter(e.target.value as Cleanliness | 'ALL')}>
           <option value="ALL">All housekeeping</option>
           {Object.values(Cleanliness).map((c) => (
             <option key={c} value={c}>
@@ -156,7 +156,7 @@ export default function RoomGridPage() {
             </option>
           ))}
         </select>
-        <select className="input sm:w-36" aria-label="Floor filter" value={floor} onChange={(e) => setFloor(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))}>
+        <select name="floorFilter" className="input sm:w-36" aria-label="Floor filter" value={floor} onChange={(e) => setFloor(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))}>
           <option value="ALL">All floors</option>
           {floors.map((f) => (
             <option key={f} value={f}>

@@ -211,14 +211,14 @@ export function RoomDrawer({
           <section>
             <h4 className="label">Create housekeeping task</h4>
             <div className="flex gap-2">
-              <select className="input" value={taskType} onChange={(e) => setTaskType(e.target.value as HousekeepingTaskType)}>
+              <select name="taskType" aria-label="Task type" className="input" value={taskType} onChange={(e) => setTaskType(e.target.value as HousekeepingTaskType)}>
                 {Object.values(HousekeepingTaskType).map((t) => (
                   <option key={t} value={t}>
                     {TASK_TYPE_LABELS[t]}
                   </option>
                 ))}
               </select>
-              <select className="input w-32" value={taskPriority} onChange={(e) => setTaskPriority(e.target.value as TaskPriority)}>
+              <select name="taskPriority" aria-label="Task priority" className="input w-32" value={taskPriority} onChange={(e) => setTaskPriority(e.target.value as TaskPriority)}>
                 {Object.values(TaskPriority).map((p) => (
                   <option key={p} value={p}>
                     {p.charAt(0) + p.slice(1).toLowerCase()}
@@ -243,11 +243,18 @@ export function RoomDrawer({
         {canManage && (
           <section>
             <h4 className="label">Notes</h4>
-            <textarea className="input min-h-20" maxLength={500} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. Extra pillows requested" />
+            <textarea name="roomNotes" aria-label="Room notes" className="input min-h-20" maxLength={500} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. Extra pillows requested" />
             <Button size="sm" variant="secondary" className="mt-2" disabled={(room.notes ?? '') === notes} loading={busy === 'notes'} onClick={() => update('notes', { notes }, 'Notes saved')}>
               Save notes
             </Button>
           </section>
+        )}
+
+        {!canManage && !canClean && !canFrontDesk && (
+          <p className="rounded-xl bg-slate-50 px-4 py-3 text-xs text-ink-subtle">
+            Your role has read-only access to rooms. Ask a manager to change a room&apos;s status or raise a housekeeping
+            task.
+          </p>
         )}
       </div>
     </Drawer>

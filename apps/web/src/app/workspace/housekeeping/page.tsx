@@ -3,7 +3,6 @@
 import {
   hasCapability,
   HousekeepingTaskStatus,
-  TASK_STATUS_LABELS,
   TASK_TYPE_LABELS,
   type HousekeepingTaskDto,
   type UpdateHousekeepingTaskRequest,
@@ -20,6 +19,14 @@ import { PRIORITY_STYLE, TASK_STATUS_STYLE } from '@/lib/status';
 import { useAsync } from '@/lib/use-async';
 
 const COLUMNS = Object.values(HousekeepingTaskStatus);
+
+/** Workflow wording for the board, kept identical to the stat cards above it. */
+const COLUMN_LABELS: Record<HousekeepingTaskStatus, string> = {
+  PENDING: 'To do',
+  IN_PROGRESS: 'In progress',
+  DONE: 'Awaiting inspection',
+  VERIFIED: 'Inspected',
+};
 
 function minutesSince(iso: string | null): number | null {
   return iso ? Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000)) : null;
@@ -148,7 +155,7 @@ export default function HousekeepingPage() {
                 return (
                   <div key={col} className="flex min-h-[200px] flex-col rounded-2xl bg-slate-100/70 p-3">
                     <div className="mb-3 flex items-center justify-between px-1">
-                      <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{TASK_STATUS_LABELS[col]}</h3>
+                      <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{COLUMN_LABELS[col]}</h3>
                       <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold tabular-nums text-ink-muted">{list.length}</span>
                     </div>
                     <div className="flex flex-col gap-2.5">
@@ -236,6 +243,7 @@ function TaskCard({
           <p className="text-xs text-ink-muted">{task.assignee ? task.assignee.name : 'Unassigned'}</p>
         ) : (
           <select
+            name={`assignee-${task.id}`}
             aria-label={`Assignee for room ${task.room.number}`}
             className="input py-1 text-xs"
             disabled={busy || task.status === 'VERIFIED'}
