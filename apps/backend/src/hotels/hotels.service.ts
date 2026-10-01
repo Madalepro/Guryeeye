@@ -32,7 +32,7 @@ export class HotelsService {
 
   async create(body: CreateHotelRequest): Promise<HotelSummary> {
     const hotel = await this.prisma.hotel.create({
-      data: { ...body, slug: body.slug.toLowerCase(), currency: body.currency.toUpperCase() },
+      data: { ...body, slug: body.slug.toLowerCase(), currency: body.currency.toUpperCase(), verified: true },
       include: hotelSummaryInclude,
     });
     return toHotelSummary(hotel);

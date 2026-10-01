@@ -19,4 +19,12 @@ export type EnumParity = [
   Assert<Same<Db.PosOutletType, Shared.PosOutletType>>,
   Assert<Same<Db.PosOrderStatus, Shared.PosOrderStatus>>,
   Assert<Same<Db.PaymentMethod, Shared.PaymentMethod>>,
+  Assert<Same<Db.PropertyType, Shared.PropertyType>>,
+  Assert<Same<Db.UnitStatus, Shared.UnitStatus>>,
+  Assert<Same<Db.LeaseStatus, Shared.LeaseStatus>>,
+  Assert<Same<Db.RentPaymentStatus, Shared.RentPaymentStatus>>,
+  Assert<Same<Db.ListingStatus, Shared.ListingStatus>>,
+  Assert<Same<Db.LeadStage, Shared.LeadStage>>,
+  Assert<Same<Db.MaintenanceStatus, Shared.MaintenanceStatus>>,
+  Assert<Same<Db.ProjectStatus, Shared.ProjectStatus>>,
 ];

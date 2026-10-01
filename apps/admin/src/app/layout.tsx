@@ -4,7 +4,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: { default: 'Guryeeye Admin', template: '%s · Guryeeye Admin' },
-  description: 'Guryeeye platform administration',
+  description: 'Guryeeye platform administration — hotels, rentals and sales',
   robots: { index: false, follow: false },
 };
 

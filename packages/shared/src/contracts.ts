@@ -2,12 +2,20 @@ import type {
   Cleanliness,
   HousekeepingTaskStatus,
   HousekeepingTaskType,
+  LeadStage,
+  MaintenanceStatus,
+  ProjectStatus,
+  LeaseStatus,
+  ListingStatus,
   PaymentMethod,
   PosOrderStatus,
   PosOutletType,
+  PropertyType,
+  RentPaymentStatus,
   ReservationStatus,
   RoomStatus,
   TaskPriority,
+  UnitStatus,
   UserRole,
 } from './domain';
 
@@ -40,6 +48,15 @@ export interface AuthUser {
 export interface LoginResponse {
   accessToken: string;
   user: AuthUser;
+}
+
+export interface RegisterRequest {
+  businessName: string;
+  city: string;
+  country: string;
+  name: string;
+  email: string;
+  password: string;
 }
 
 // ---------- Hotels ----------
@@ -301,6 +318,209 @@ export interface WorkspaceOverview {
   todayRevenueCents: number;
 }
 
+// ---------- Rentals (Guryaha Kirada) ----------
+
+export interface RentalUnitDto {
+  id: string;
+  label: string;
+  bedrooms: number;
+  monthlyRentCents: number;
+  status: UnitStatus;
+  /** Tenant on the active lease, if any. */
+  tenant: { leaseId: string; name: string; endDate: IsoDate } | null;
+}
+
+export interface RentalPropertyDto {
+  id: string;
+  name: string;
+  type: PropertyType;
+  address: string;
+  city: string;
+  units: RentalUnitDto[];
+}
+
+export interface CreateRentalPropertyRequest {
+  name: string;
+  type: PropertyType;
+  address: string;
+  city: string;
+  units: { label: string; bedrooms: number; monthlyRentCents: number }[];
+}
+
+export interface TenantDto {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  activeLeases: number;
+}
+
+export interface LeaseDto {
+  id: string;
+  status: LeaseStatus;
+  startDate: IsoDate;
+  endDate: IsoDate;
+  monthlyRentCents: number;
+  depositCents: number;
+  tenant: { id: string; name: string; phone: string | null };
+  unit: { id: string; label: string };
+  property: { id: string; name: string };
+  balanceDueCents: number;
+}
+
+export interface CreateLeaseRequest {
+  unitId: string;
+  tenant: { name: string; phone?: string; email?: string };
+  startDate: IsoDate;
+  endDate: IsoDate;
+  monthlyRentCents?: number;
+  depositCents?: number;
+}
+
+export interface RentPaymentDto {
+  id: string;
+  leaseId: string;
+  period: IsoDate;
+  dueDate: IsoDate;
+  amountCents: number;
+  status: RentPaymentStatus;
+  overdue: boolean;
+  method: PaymentMethod | null;
+  paidAt: IsoDateTime | null;
+  tenantName: string;
+  unitLabel: string;
+  propertyName: string;
+}
+
+export interface PayRentRequest {
+  method: Exclude<PaymentMethod, 'ROOM_CHARGE'>;
+}
+
+export interface RentalsOverview {
+  currency: string;
+  today: IsoDate;
+  properties: number;
+  units: number;
+  unitStatus: Record<UnitStatus, number>;
+  occupancyRate: number;
+  monthlyRentRollCents: number;
+  collectedThisMonthCents: number;
+  outstandingCents: number;
+  overdueCount: number;
+  expiringSoon: LeaseDto[];
+}
+
+// ---------- Sales (Iibka) ----------
+
+export interface SaleListingDto {
+  id: string;
+  title: string;
+  type: PropertyType;
+  address: string;
+  city: string;
+  bedrooms: number | null;
+  areaSqm: number | null;
+  askingPriceCents: number;
+  status: ListingStatus;
+  listedAt: IsoDateTime;
+  leadCount: number;
+}
+
+export interface CreateSaleListingRequest {
+  title: string;
+  type: PropertyType;
+  address: string;
+  city: string;
+  bedrooms?: number;
+  areaSqm?: number;
+  askingPriceCents: number;
+}
+
+export interface UpdateSaleListingRequest {
+  status?: Exclude<ListingStatus, 'SOLD'>;
+  askingPriceCents?: number;
+}
+
+export interface SaleLeadDto {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  stage: LeadStage;
+  offerCents: number | null;
+  notes: string | null;
+  listing: { id: string; title: string; askingPriceCents: number; status: ListingStatus } | null;
+  agent: { id: string; name: string } | null;
+  createdAt: IsoDateTime;
+  updatedAt: IsoDateTime;
+}
+
+export interface CreateSaleLeadRequest {
+  name: string;
+  phone?: string;
+  email?: string;
+  listingId?: string;
+  notes?: string;
+}
+
+export interface UpdateSaleLeadRequest {
+  stage?: Exclude<LeadStage, 'WON'>;
+  offerCents?: number | null;
+  listingId?: string | null;
+  notes?: string | null;
+}
+
+export interface CloseSaleRequest {
+  priceCents: number;
+  commissionBps?: number;
+}
+
+export interface SaleTransactionDto {
+  id: string;
+  priceCents: number;
+  commissionBps: number;
+  commissionCents: number;
+  closedAt: IsoDateTime;
+  listing: { id: string; title: string; city: string };
+  buyer: { id: string; name: string };
+  agent: { id: string; name: string } | null;
+}
+
+export interface SalesOverview {
+  currency: string;
+  activeListings: number;
+  underOffer: number;
+  inventoryValueCents: number;
+  pipelineValueCents: number;
+  leadStages: Record<LeadStage, number>;
+  soldLast30Days: number;
+  volumeLast30DaysCents: number;
+  commissionLast30DaysCents: number;
+  recentTransactions: SaleTransactionDto[];
+}
+
+// ---------- Cross-service analytics ----------
+
+export type ServiceKey = 'hotel' | 'rentals' | 'sales';
+
+export interface AnalyticsPoint {
+  date: IsoDate;
+  hotelCents: number;
+  rentalsCents: number;
+  salesCents: number;
+}
+
+export interface PlatformAnalytics {
+  range: { from: IsoDate; to: IsoDate };
+  currency: string;
+  /** Recognised revenue by service: hotel room + POS, rent collected, sales commission. */
+  revenue: Record<ServiceKey, number> & { total: number };
+  series: AnalyticsPoint[];
+  hotel: { rooms: number; occupancyRate: number; adrCents: number };
+  rentals: { units: number; occupancyRate: number; outstandingCents: number };
+  sales: { activeListings: number; openLeads: number; volumeCents: number };
+}
+
 // ---------- Platform admin ----------
 
 export interface PlatformOverview {
@@ -313,6 +533,41 @@ export interface PlatformOverview {
     occupancyRate: number;
     revenueLast30DaysCents: number;
   })[];
+  rentals: {
+    properties: number;
+    units: number;
+    occupiedUnits: number;
+    activeLeases: number;
+    collectedLast30DaysCents: number;
+    outstandingCents: number;
+  };
+  sales: {
+    activeListings: number;
+    openLeads: number;
+    soldLast30Days: number;
+    volumeLast30DaysCents: number;
+    commissionLast30DaysCents: number;
+  };
+  marketplace: {
+    forRent: number;
+    forSale: number;
+    projects: number;
+    openMaintenance: number;
+    newInquiries: number;
+  };
+  /** Per-account totals across every service, trailing 30 days. */
+  accountStats: {
+    id: string;
+    name: string;
+    verified: boolean;
+    city: string;
+    currency: string;
+    hotelRevenueCents: number;
+    rentalUnits: number;
+    rentCollectedCents: number;
+    activeListings: number;
+    salesCommissionCents: number;
+  }[];
 }
 
 // ---------- Real-time events ----------
@@ -325,3 +580,127 @@ export type HotelEvent =
   | { type: 'reservation.updated'; hotelId: string; reservation: ReservationDto };
 
 export type HotelEventType = HotelEvent['type'];
+
+// ---------- Property management (RPM) ----------
+
+export interface MaintenanceRequestDto {
+  id: string;
+  title: string;
+  description: string | null;
+  priority: TaskPriority;
+  status: MaintenanceStatus;
+  costCents: number | null;
+  createdAt: IsoDateTime;
+  resolvedAt: IsoDateTime | null;
+  unit: { id: string; label: string; status: UnitStatus };
+  property: { id: string; name: string };
+  tenantName: string | null;
+}
+
+export interface CreateMaintenanceRequest {
+  unitId: string;
+  title: string;
+  description?: string;
+  priority?: TaskPriority;
+  /** Take the unit off the market while the work is done (vacant units only). */
+  blockUnit?: boolean;
+}
+
+export interface UpdateMaintenanceRequest {
+  status?: MaintenanceStatus;
+  priority?: TaskPriority;
+  costCents?: number | null;
+}
+
+export interface RentalInquiryDto {
+  id: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  message: string | null;
+  handled: boolean;
+  createdAt: IsoDateTime;
+  unit: { id: string; label: string; status: UnitStatus };
+  property: { id: string; name: string };
+}
+
+// ---------- Public marketplace ----------
+
+export interface PublicListing {
+  id: string;
+  kind: 'rent' | 'sale';
+  title: string;
+  type: PropertyType;
+  city: string;
+  address: string;
+  bedrooms: number | null;
+  areaSqm: number | null;
+  /** Monthly rent for rentals, asking price for sales. */
+  priceCents: number;
+  currency: string;
+  status: 'AVAILABLE' | 'UNDER_OFFER';
+  listedBy: { accountId: string; name: string };
+  verified: boolean;
+}
+
+export interface PublicListingQuery {
+  kind?: 'rent' | 'sale';
+  city?: string;
+  type?: PropertyType;
+  minBedrooms?: number;
+  maxPriceCents?: number;
+  q?: string;
+}
+
+export interface PublicInquiryRequest {
+  listingId: string;
+  kind: 'rent' | 'sale';
+  name: string;
+  phone: string;
+  email?: string;
+  message?: string;
+}
+
+export interface PublicHotel {
+  id: string;
+  name: string;
+  city: string;
+  country: string;
+  currency: string;
+  rooms: number;
+  availableTonight: number;
+  fromRateCents: number | null;
+  roomTypes: { name: string; baseRateCents: number; capacity: number }[];
+}
+
+export interface PublicAgent {
+  id: string;
+  name: string;
+  role: 'SALES_AGENT' | 'PROPERTY_MANAGER';
+  agency: { id: string; name: string; city: string };
+  activeListings: number;
+  propertiesSold: number;
+  managedUnits: number;
+}
+
+export interface PublicProject {
+  id: string;
+  name: string;
+  city: string;
+  description: string;
+  status: ProjectStatus;
+  totalUnits: number;
+  unitsAvailable: number;
+  priceFromCents: number;
+  currency: string;
+  expectedCompletion: IsoDate | null;
+  developer: string;
+}
+
+export interface MarketplaceStats {
+  forRent: number;
+  forSale: number;
+  hotels: number;
+  agents: number;
+  cities: string[];
+}

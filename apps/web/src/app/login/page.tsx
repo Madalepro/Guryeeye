@@ -11,6 +11,8 @@ const DEMO_ACCOUNTS = [
   ['Front desk', 'frontdesk@guryeeye.com'],
   ['Housekeeping', 'housekeeping@guryeeye.com'],
   ['Cashier', 'cashier@guryeeye.com'],
+  ['Property manager', 'property@guryeeye.com'],
+  ['Sales agent', 'sales@guryeeye.com'],
 ] as const;
 
 export default function LoginPage() {
@@ -45,11 +47,11 @@ export default function LoginPage() {
         <Logo inverted />
         <div>
           <h2 className="font-display text-3xl font-semibold leading-snug">
-            Every room, every task, every sale —<br />
-            <span className="text-sand-300">live.</span>
+            Hotels, rentals and sales —<br />
+            <span className="text-sand-300">one workspace.</span>
           </h2>
           <p className="mt-4 max-w-md text-brand-100/80">
-            Sign in to your Hotel Workspace to manage the room grid, housekeeping, point of sale and performance reports.
+            Sign in to manage hotel operations, rental properties and tenants, property sales and platform-wide analytics.
           </p>
         </div>
         <p className="text-xs text-brand-200/60">© {new Date().getFullYear()} Guryeeye</p>
@@ -62,7 +64,7 @@ export default function LoginPage() {
           </div>
           <div>
             <h1 className="font-display text-2xl font-semibold">Sign in</h1>
-            <p className="mt-1 text-sm text-ink-muted">Welcome back to your Hotel Workspace.</p>
+            <p className="mt-1 text-sm text-ink-muted">Welcome back to your Guryeeye workspace.</p>
           </div>
           <ErrorBanner error={error} />
           <div>

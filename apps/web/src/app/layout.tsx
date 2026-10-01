@@ -5,8 +5,8 @@ import { AuthProvider } from '@/lib/auth';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: { default: 'Guryeeye Hotel Workspace', template: '%s · Guryeeye' },
-  description: 'Run your hotel in real time — rooms, housekeeping, POS and analytics in one workspace.',
+  title: { default: 'Guryeeye — Hotels, Rentals & Sales', template: '%s · Guryeeye' },
+  description: 'Hotel management, property rentals, real estate sales and platform analytics in one workspace.',
 };
 
 export const viewport: Viewport = { themeColor: '#186257' };

@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AdminModule } from './admin/admin.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 import { AuthGuard } from './auth/auth.guard';
 import { AuthModule } from './auth/auth.module';
 import { PrismaExceptionFilter } from './common/prisma-exception.filter';
@@ -11,11 +12,15 @@ import { EventsModule } from './events/events.module';
 import { HealthController } from './health/health.controller';
 import { HotelsModule } from './hotels/hotels.module';
 import { HousekeepingModule } from './housekeeping/housekeeping.module';
+import { MarketplaceModule } from './marketplace/marketplace.module';
 import { PosModule } from './pos/pos.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { RentalsModule } from './rentals/rentals.module';
 import { ReportsModule } from './reports/reports.module';
 import { ReservationsModule } from './reservations/reservations.module';
 import { RoomsModule } from './rooms/rooms.module';
+import { RpmModule } from './rpm/rpm.module';
+import { SalesModule } from './sales/sales.module';
 
 @Module({
   imports: [
@@ -30,6 +35,11 @@ import { RoomsModule } from './rooms/rooms.module';
     HousekeepingModule,
     PosModule,
     ReportsModule,
+    RentalsModule,
+    SalesModule,
+    RpmModule,
+    MarketplaceModule,
+    AnalyticsModule,
     AdminModule,
   ],
   controllers: [HealthController],
