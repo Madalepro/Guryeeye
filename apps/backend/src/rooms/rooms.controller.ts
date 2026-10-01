@@ -28,6 +28,7 @@ class UpdateRoomStatusDto implements UpdateRoomStatusRequest {
   notes?: string | null;
 }
 
+@RequireCapability('hotel')
 @Controller('hotels/:hotelId')
 export class RoomsController {
   constructor(private readonly rooms: RoomsService) {}

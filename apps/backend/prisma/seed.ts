@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import { PrismaClient, type PosOutletType, type RoomStatus, type Cleanliness } from '@prisma/client';
+import { PrismaClient, type PosOutletType, type PropertyType, type RoomStatus, type Cleanliness } from '@prisma/client';
 import { addDays, computeOrderTotals, parseIsoDate, todayInTimezone } from '@guryeeye/shared';
 import * as bcrypt from 'bcryptjs';
 
@@ -73,6 +73,169 @@ const HOTELS: HotelSeed[] = [
   },
 ];
 
+
+const STREETS = ['Maka Al Mukarama Rd', 'Jidka Wadnaha', 'KM4 Junction', 'Taleex St', 'Lido Beach Rd', 'Hodan District', 'Waberi Ave', 'Shaqalaha', 'Jigjiga Yar', 'New Hargeisa'];
+
+const RENTALS: Record<string, [string, PropertyType, number, number, number][]> = {
+  // name, type, units, bedrooms, monthly rent (cents)
+  'grand-mogadishu': [
+    ['Hodan Heights Apartments', 'APARTMENT', 12, 2, 65000],
+    ['Lido Beach Villas', 'VILLA', 4, 4, 220000],
+    ['Bakaara Trade Centre', 'COMMERCIAL', 6, 0, 120000],
+    ['Waberi Family Homes', 'HOUSE', 5, 3, 90000],
+  ],
+  'suites-hargeisa': [
+    ['Jigjiga Yar Residences', 'APARTMENT', 8, 2, 45000],
+    ['Shaab Area Houses', 'HOUSE', 3, 3, 70000],
+  ],
+};
+
+const LISTINGS: Record<string, [string, PropertyType, number | null, number, number][]> = {
+  // title, type, bedrooms, area m², asking price (cents)
+  'grand-mogadishu': [
+    ['Sea-view villa on Lido Beach', 'VILLA', 5, 420, 38_500_000],
+    ['3-bed family house, Hodan', 'HOUSE', 3, 210, 14_500_000],
+    ['Penthouse apartment, KM4', 'APARTMENT', 3, 160, 12_000_000],
+    ['Corner shop unit, Bakaara Market', 'COMMERCIAL', null, 85, 9_500_000],
+    ['Residential plot, Daynile', 'LAND', null, 600, 4_800_000],
+    ['2-bed apartment, Wadajir', 'APARTMENT', 2, 95, 6_200_000],
+    ['Office floor, Maka Al Mukarama', 'COMMERCIAL', null, 340, 27_000_000],
+    ['4-bed townhouse, Howlwadaag', 'HOUSE', 4, 260, 18_800_000],
+    ['Beachfront plot, Jazeera', 'LAND', null, 1200, 16_000_000],
+    ['Garden villa, Hamar Jajab', 'VILLA', 4, 330, 26_500_000],
+  ],
+  'suites-hargeisa': [
+    ['Modern house, Jigjiga Yar', 'HOUSE', 4, 240, 11_500_000],
+    ['Hilltop plot, Masala', 'LAND', null, 800, 3_900_000],
+    ['2-bed flat, 26 June district', 'APARTMENT', 2, 90, 4_600_000],
+    ['Retail unit, Hargeisa centre', 'COMMERCIAL', null, 70, 7_200_000],
+  ],
+};
+
+function monthStart(d: string): string {
+  return `${d.slice(0, 7)}-01`;
+}
+function nextMonth(p: string): string {
+  const [y, m] = p.split('-').map(Number) as [number, number];
+  return m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`;
+}
+function addMonths(d: string, n: number): string {
+  let p = monthStart(d);
+  if (n >= 0) for (let i = 0; i < n; i++) p = nextMonth(p);
+  else for (let i = 0; i < -n; i++) {
+    const [y, m] = p.split('-').map(Number) as [number, number];
+    p = m === 1 ? `${y - 1}-12-01` : `${y}-${String(m - 1).padStart(2, '0')}-01`;
+  }
+  return `${p.slice(0, 8)}${d.slice(8)}`;
+}
+
+async function seedRentals(hotelId: string, slug: string, today: string) {
+  let leases = 0;
+  for (const [name, type, unitCount, bedrooms, rent] of RENTALS[slug] ?? []) {
+    const property = await prisma.rentalProperty.create({
+      data: { hotelId, name, type, address: pick(STREETS), city: slug === 'suites-hargeisa' ? 'Hargeisa' : 'Mogadishu' },
+    });
+    for (let i = 1; i <= unitCount; i++) {
+      const label = type === 'COMMERCIAL' ? `Shop ${i}` : type === 'APARTMENT' ? `${Math.ceil(i / 4)}${String(((i - 1) % 4) + 1).padStart(2, '0')}` : `No. ${i}`;
+      const monthly = Math.round((rent * (0.9 + rand() * 0.25)) / 500) * 500;
+      const r = rand();
+      const unit = await prisma.rentalUnit.create({
+        data: { propertyId: property.id, label, bedrooms, monthlyRentCents: monthly, status: r < 0.78 ? 'OCCUPIED' : r < 0.86 ? 'MAINTENANCE' : 'VACANT' },
+      });
+      if (unit.status !== 'OCCUPIED') continue;
+
+      const tenant = await prisma.tenant.create({
+        data: {
+          hotelId,
+          name: type === 'COMMERCIAL' ? `${pick(LAST)} ${pick(['Trading', 'Electronics', 'Pharmacy', 'Textiles', 'General Store'])}` : `${pick(FIRST)} ${pick(LAST)}`,
+          phone: `+252 61 ${int(100, 999)} ${int(1000, 9999)}`,
+          email: rand() > 0.5 ? `tenant${int(1000, 9999)}@example.com` : null,
+        },
+      });
+      const start = `${addMonths(today, -int(1, 14)).slice(0, 8)}01`;
+      const end = addDays(`${addMonths(today, int(1, 12)).slice(0, 8)}01`, -1);
+      const lease = await prisma.lease.create({
+        data: {
+          hotelId, unitId: unit.id, tenantId: tenant.id, startDate: parseIsoDate(start), endDate: parseIsoDate(end),
+          monthlyRentCents: monthly, depositCents: monthly,
+        },
+      });
+      leases++;
+
+      // A few tenants are behind on rent; everyone else is paid up except possibly this month.
+      const arrears = rand() < 0.2 ? int(1, 2) : 0;
+      const periods: string[] = [];
+      for (let p = monthStart(start); p <= monthStart(today); p = nextMonth(p)) periods.push(p);
+      for (const [idx, period] of periods.entries()) {
+        const due = addDays(period, 4);
+        const fromEnd = periods.length - 1 - idx;
+        const unpaid = (fromEnd >= 1 && fromEnd <= arrears) || (fromEnd === 0 && due >= today && rand() < 0.5);
+        const paidAt = new Date(Math.min(Date.now() - 3_600_000, Date.parse(`${addDays(period, int(0, 6))}T${String(int(8, 17)).padStart(2, '0')}:15:00Z`)));
+        await prisma.rentPayment.create({
+          data: {
+            hotelId, leaseId: lease.id, period: parseIsoDate(period), dueDate: parseIsoDate(due), amountCents: monthly,
+            status: unpaid ? 'PENDING' : 'PAID',
+            method: unpaid ? null : pick(['MOBILE_MONEY', 'MOBILE_MONEY', 'CASH', 'CARD'] as const),
+            paidAt: unpaid ? null : paidAt,
+          },
+        });
+      }
+    }
+  }
+  return leases;
+}
+
+async function seedSales(hotelId: string, slug: string, agentId: string | null) {
+  const listings = [];
+  for (const [title, type, bedrooms, areaSqm, price] of LISTINGS[slug] ?? []) {
+    listings.push(
+      await prisma.saleListing.create({
+        data: {
+          hotelId, title, type, bedrooms, areaSqm, askingPriceCents: price, address: pick(STREETS),
+          city: slug === 'suites-hargeisa' ? 'Hargeisa' : 'Mogadishu',
+          listedAt: new Date(Date.now() - int(5, 120) * 86_400_000),
+        },
+      }),
+    );
+  }
+
+  // Close a few sales over the last two months.
+  const soldCount = Math.min(3, Math.floor(listings.length / 3));
+  for (const listing of listings.slice(0, soldCount)) {
+    const price = Math.round((listing.askingPriceCents * (0.9 + rand() * 0.08)) / 10_000) * 10_000;
+    const closedAt = new Date(Date.now() - int(2, 55) * 86_400_000);
+    const lead = await prisma.saleLead.create({
+      data: {
+        hotelId, listingId: listing.id, agentId, name: `${pick(FIRST)} ${pick(LAST)}`, phone: `+252 61 ${int(100, 999)} ${int(1000, 9999)}`,
+        stage: 'WON', offerCents: price, createdAt: new Date(closedAt.getTime() - int(10, 40) * 86_400_000),
+      },
+    });
+    await prisma.saleListing.update({ where: { id: listing.id }, data: { status: 'SOLD' } });
+    await prisma.saleTransaction.create({
+      data: { hotelId, listingId: listing.id, leadId: lead.id, priceCents: price, commissionBps: 300, commissionCents: Math.round(price * 0.03), closedAt },
+    });
+  }
+
+  const onMarket = listings.slice(soldCount);
+  const stages = ['NEW', 'NEW', 'CONTACTED', 'CONTACTED', 'VIEWING', 'VIEWING', 'NEGOTIATION', 'LOST'] as const;
+  for (let i = 0; i < onMarket.length * 2; i++) {
+    const listing = rand() < 0.85 ? pick(onMarket) : null;
+    const stage = pick(stages);
+    await prisma.saleLead.create({
+      data: {
+        hotelId, listingId: listing?.id ?? null, agentId, name: `${pick(FIRST)} ${pick(LAST)}`,
+        phone: `+252 61 ${int(100, 999)} ${int(1000, 9999)}`, email: rand() > 0.5 ? `buyer${int(1000, 9999)}@example.com` : null,
+        stage,
+        offerCents: stage === 'NEGOTIATION' && listing ? Math.round((listing.askingPriceCents * (0.85 + rand() * 0.1)) / 10_000) * 10_000 : null,
+        notes: stage === 'VIEWING' ? 'Viewing booked for this week' : stage === 'LOST' ? 'Bought elsewhere' : null,
+        createdAt: new Date(Date.now() - int(1, 45) * 86_400_000),
+      },
+    });
+    if (stage === 'NEGOTIATION' && listing) await prisma.saleListing.update({ where: { id: listing.id }, data: { status: 'UNDER_OFFER' } });
+  }
+  return listings.length;
+}
+
 async function seedHotel(cfg: HotelSeed, passwordHash: string, primary: boolean) {
   const today = todayInTimezone(cfg.timezone);
   const hotel = await prisma.hotel.create({
@@ -114,6 +277,12 @@ async function seedHotel(cfg: HotelSeed, passwordHash: string, primary: boolean)
     }),
     cashier: await prisma.user.create({
       data: { email: primary ? 'cashier@guryeeye.com' : `cashier@${cfg.emailDomain}`, name: 'Deeqa Nur', role: 'POS_CASHIER', hotelId: hotel.id, passwordHash },
+    }),
+    propertyManager: await prisma.user.create({
+      data: { email: primary ? 'property@guryeeye.com' : `property@${cfg.emailDomain}`, name: 'Ilhan Abdi', role: 'PROPERTY_MANAGER', hotelId: hotel.id, passwordHash },
+    }),
+    salesAgent: await prisma.user.create({
+      data: { email: primary ? 'sales@guryeeye.com' : `sales@${cfg.emailDomain}`, name: 'Bashir Yusuf', role: 'SALES_AGENT', hotelId: hotel.id, passwordHash },
     }),
   };
   const housekeepers = await Promise.all(
@@ -328,7 +497,10 @@ async function seedHotel(cfg: HotelSeed, passwordHash: string, primary: boolean)
     }
   }
 
-  return { hotel, rooms: rooms.length, staff, housekeepers };
+  const leases = await seedRentals(hotel.id, cfg.slug, today);
+  const listings = await seedSales(hotel.id, cfg.slug, staff.salesAgent.id);
+
+  return { hotel, rooms: rooms.length, leases, listings, staff, housekeepers };
 }
 
 async function main() {
@@ -336,6 +508,14 @@ async function main() {
 
   console.log('Clearing existing data…');
   await prisma.$transaction([
+    prisma.saleTransaction.deleteMany(),
+    prisma.saleLead.deleteMany(),
+    prisma.saleListing.deleteMany(),
+    prisma.rentPayment.deleteMany(),
+    prisma.lease.deleteMany(),
+    prisma.tenant.deleteMany(),
+    prisma.rentalUnit.deleteMany(),
+    prisma.rentalProperty.deleteMany(),
     prisma.folioLine.deleteMany(),
     prisma.posOrderLine.deleteMany(),
     prisma.posOrder.deleteMany(),
@@ -356,12 +536,12 @@ async function main() {
   });
 
   for (const [i, cfg] of HOTELS.entries()) {
-    const { hotel, rooms } = await seedHotel(cfg, passwordHash, i === 0);
-    console.log(`Seeded ${hotel.name} (${rooms} rooms)`);
+    const { hotel, rooms, leases, listings } = await seedHotel(cfg, passwordHash, i === 0);
+    console.log(`Seeded ${hotel.name} (${rooms} rooms, ${leases} active leases, ${listings} sale listings)`);
   }
 
   console.log(`\nDemo logins (password: ${PASSWORD})`);
-  for (const e of ['admin', 'owner', 'manager', 'frontdesk', 'housekeeping', 'cashier']) console.log(`  ${e}@guryeeye.com`);
+  for (const e of ['admin', 'owner', 'manager', 'frontdesk', 'housekeeping', 'cashier', 'property', 'sales']) console.log(`  ${e}@guryeeye.com`);
 }
 
 main()

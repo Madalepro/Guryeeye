@@ -17,6 +17,8 @@ enum UserRole {
   FRONT_DESK
   HOUSEKEEPER
   POS_CASHIER
+  PROPERTY_MANAGER
+  SALES_AGENT
 }
 
 enum RoomStatus {
@@ -93,6 +95,46 @@ enum FolioSource {
   OTHER
 }
 
+enum PropertyType {
+  APARTMENT
+  HOUSE
+  VILLA
+  COMMERCIAL
+  LAND
+}
+
+enum UnitStatus {
+  VACANT
+  OCCUPIED
+  MAINTENANCE
+}
+
+enum LeaseStatus {
+  ACTIVE
+  ENDED
+}
+
+enum RentPaymentStatus {
+  PENDING
+  PAID
+}
+
+enum ListingStatus {
+  ACTIVE
+  UNDER_OFFER
+  SOLD
+  WITHDRAWN
+}
+
+enum LeadStage {
+  NEW
+  CONTACTED
+  VIEWING
+  NEGOTIATION
+  WON
+  LOST
+}
+
 model Hotel {
   id         String   @id @default(cuid())
   name       String
@@ -114,6 +156,14 @@ model Hotel {
   housekeepingTasks HousekeepingTask[]
   posOutlets        PosOutlet[]
   posOrders         PosOrder[]
+
+  rentalProperties RentalProperty[]
+  tenants          Tenant[]
+  leases           Lease[]
+  rentPayments     RentPayment[]
+  saleListings     SaleListing[]
+  saleLeads        SaleLead[]
+  saleTransactions SaleTransaction[]
 }
 
 model User {
@@ -130,6 +180,7 @@ model User {
 
   assignedTasks HousekeepingTask[] @relation("TaskAssignee")
   posOrders     PosOrder[]         @relation("OrderCreator")
+  saleLeads     SaleLead[]         @relation("LeadAgent")
 
   @@index([hotelId, role])
 }
@@ -315,4 +366,155 @@ model PosOrderLine {
   quantity       Int
   unitPriceCents Int
   lineTotalCents Int
+}
+
+// ---------- Property & housing rentals (Guryaha Kirada) ----------
+// Rentals and sales are scoped to the same tenant account (Hotel) as the HMS,
+// so one business can run hotels, a rental portfolio and a sales desk together.
+
+model RentalProperty {
+  id        String       @id @default(cuid())
+  hotelId   String
+  hotel     Hotel        @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  name      String
+  type      PropertyType
+  address   String
+  city      String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  units RentalUnit[]
+
+  @@index([hotelId])
+}
+
+model RentalUnit {
+  id               String         @id @default(cuid())
+  propertyId       String
+  property         RentalProperty @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  label            String
+  bedrooms         Int            @default(1)
+  monthlyRentCents Int
+  status           UnitStatus     @default(VACANT)
+
+  leases Lease[]
+
+  @@unique([propertyId, label])
+}
+
+model Tenant {
+  id        String   @id @default(cuid())
+  hotelId   String
+  hotel     Hotel    @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  name      String
+  phone     String?
+  email     String?
+  createdAt DateTime @default(now())
+
+  leases Lease[]
+
+  @@index([hotelId])
+}
+
+model Lease {
+  id               String      @id @default(cuid())
+  hotelId          String
+  hotel            Hotel       @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  unitId           String
+  unit             RentalUnit  @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  tenantId         String
+  tenant           Tenant      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  status           LeaseStatus @default(ACTIVE)
+  startDate        DateTime    @db.Date
+  endDate          DateTime    @db.Date
+  monthlyRentCents Int
+  depositCents     Int         @default(0)
+  endedAt          DateTime?
+  createdAt        DateTime    @default(now())
+
+  payments RentPayment[]
+
+  @@index([hotelId, status])
+  @@index([unitId, status])
+}
+
+model RentPayment {
+  id          String            @id @default(cuid())
+  hotelId     String
+  hotel       Hotel             @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  leaseId     String
+  lease       Lease             @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  /// First day of the month this invoice covers
+  period      DateTime          @db.Date
+  dueDate     DateTime          @db.Date
+  amountCents Int
+  status      RentPaymentStatus @default(PENDING)
+  method      PaymentMethod?
+  paidAt      DateTime?
+
+  @@unique([leaseId, period])
+  @@index([hotelId, status, dueDate])
+  @@index([hotelId, paidAt])
+}
+
+// ---------- Real estate sales (Iibka) ----------
+
+model SaleListing {
+  id               String        @id @default(cuid())
+  hotelId          String
+  hotel            Hotel         @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  title            String
+  type             PropertyType
+  address          String
+  city             String
+  bedrooms         Int?
+  areaSqm          Int?
+  askingPriceCents Int
+  status           ListingStatus @default(ACTIVE)
+  listedAt         DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  leads       SaleLead[]
+  transaction SaleTransaction?
+
+  @@index([hotelId, status])
+}
+
+model SaleLead {
+  id         String       @id @default(cuid())
+  hotelId    String
+  hotel      Hotel        @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  listingId  String?
+  listing    SaleListing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  agentId    String?
+  agent      User?        @relation("LeadAgent", fields: [agentId], references: [id], onDelete: SetNull)
+  name       String
+  phone      String?
+  email      String?
+  stage      LeadStage    @default(NEW)
+  offerCents Int?
+  notes      String?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  transaction SaleTransaction?
+
+  @@index([hotelId, stage])
+}
+
+model SaleTransaction {
+  id              String      @id @default(cuid())
+  hotelId         String
+  hotel           Hotel       @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  listingId       String      @unique
+  listing         SaleListing @relation(fields: [listingId], references: [id], onDelete: Restrict)
+  leadId          String      @unique
+  lead            SaleLead    @relation(fields: [leadId], references: [id], onDelete: Restrict)
+  priceCents      Int
+  /// Commission rate in basis points, e.g. 300 = 3%
+  commissionBps   Int
+  commissionCents Int
+  closedAt        DateTime    @default(now())
+
+  @@index([hotelId, closedAt])
 }

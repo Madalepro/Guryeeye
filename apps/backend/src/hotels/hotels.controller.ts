@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import type { AuthUser, CreateHotelRequest, HotelSummary, WorkspaceOverview } from '@guryeeye/shared';
 import { IsInt, IsString, IsTimeZone, Length, Matches, Max, MaxLength, Min, MinLength } from 'class-validator';
-import { CurrentUser, PlatformAdminOnly } from '../auth/auth.decorators';
+import { CurrentUser, PlatformAdminOnly, RequireCapability } from '../auth/auth.decorators';
 import { HotelsService } from './hotels.service';
 
 class CreateHotelDto implements CreateHotelRequest {
@@ -36,6 +36,7 @@ export class HotelsController {
     return this.hotels.get(hotelId);
   }
 
+  @RequireCapability('hotel')
   @Get(':hotelId/overview')
   overview(@Param('hotelId') hotelId: string): Promise<WorkspaceOverview> {
     return this.hotels.overview(hotelId);
