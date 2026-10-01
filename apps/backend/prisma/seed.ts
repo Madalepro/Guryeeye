@@ -140,7 +140,7 @@ async function seedRentals(hotelId: string, slug: string, today: string) {
       const monthly = Math.round((rent * (0.9 + rand() * 0.25)) / 500) * 500;
       const r = rand();
       const unit = await prisma.rentalUnit.create({
-        data: { propertyId: property.id, label, bedrooms, monthlyRentCents: monthly, status: r < 0.78 ? 'OCCUPIED' : r < 0.86 ? 'MAINTENANCE' : 'VACANT' },
+        data: { propertyId: property.id, label, bedrooms, monthlyRentCents: monthly, status: r < 0.66 ? 'OCCUPIED' : r < 0.72 ? 'MAINTENANCE' : 'VACANT' },
       });
       if (unit.status !== 'OCCUPIED') continue;
 
@@ -236,6 +236,60 @@ async function seedSales(hotelId: string, slug: string, agentId: string | null) 
   return listings.length;
 }
 
+const PROJECTS: Record<string, [string, string, 'PLANNING' | 'UNDER_CONSTRUCTION' | 'COMPLETED', number, number, number, number][]> = {
+  // name, description, status, total units, available, price from (cents), months to completion
+  'grand-mogadishu': [
+    ['Lido Bay Residences', 'Twin 14-storey towers of sea-view 2- and 3-bed apartments with a private beach club, backup power and 24/7 security.', 'UNDER_CONSTRUCTION', 168, 61, 9_500_000, 14],
+    ['Hodan Gardens', 'Gated community of 40 family townhouses around a landscaped park, school and mosque.', 'PLANNING', 40, 40, 16_500_000, 30],
+    ['KM4 Business Square', 'Grade-A offices and ground-floor retail at the KM4 junction, ready for fit-out.', 'COMPLETED', 52, 9, 7_800_000, 0],
+  ],
+  'suites-hargeisa': [
+    ['Masala Hills Villas', 'Hillside villas with city views, solar-ready roofs and water storage.', 'UNDER_CONSTRUCTION', 24, 11, 12_000_000, 10],
+  ],
+};
+
+const REPAIRS = ['Leaking kitchen tap', 'AC not cooling', 'Broken window latch', 'Water tank pump fault', 'Repaint after move-out', 'Electrical socket sparking', 'Blocked bathroom drain'];
+
+async function seedPropertyManagement(hotelId: string, slug: string) {
+  const units = await prisma.rentalUnit.findMany({ where: { property: { hotelId } } });
+  for (const u of units.filter((x) => x.status === 'MAINTENANCE')) {
+    await prisma.maintenanceRequest.create({ data: { hotelId, unitId: u.id, title: 'Full renovation before re-letting', priority: 'HIGH', status: 'IN_PROGRESS', costCents: 120000 } });
+  }
+  for (const u of units.filter((x) => x.status === 'OCCUPIED').slice(0, 6)) {
+    const resolved = rand() < 0.4;
+    await prisma.maintenanceRequest.create({
+      data: {
+        hotelId, unitId: u.id, title: pick(REPAIRS), priority: pick(['LOW', 'NORMAL', 'NORMAL', 'HIGH', 'URGENT'] as const),
+        status: resolved ? 'RESOLVED' : pick(['OPEN', 'IN_PROGRESS'] as const),
+        costCents: resolved ? int(20, 250) * 100 : null,
+        createdAt: new Date(Date.now() - int(1, 20) * 86_400_000),
+        resolvedAt: resolved ? new Date(Date.now() - int(0, 1) * 86_400_000) : null,
+      },
+    });
+  }
+  for (const u of units.filter((x) => x.status === 'VACANT')) {
+    for (let k = 0; k < int(1, 2); k++) {
+      await prisma.rentalInquiry.create({
+        data: {
+          hotelId, unitId: u.id, name: `${pick(FIRST)} ${pick(LAST)}`, phone: `+252 61 ${int(100, 999)} ${int(1000, 9999)}`,
+          message: pick(['Is this still available? I would like to view it this week.', 'Can I pay 6 months upfront?', 'Is water and electricity included?']),
+          createdAt: new Date(Date.now() - int(1, 72) * 3_600_000),
+        },
+      });
+    }
+  }
+  const today = todayInTimezone('Africa/Mogadishu');
+  for (const [name, description, status, totalUnits, unitsAvailable, priceFromCents, months] of PROJECTS[slug] ?? []) {
+    await prisma.project.create({
+      data: {
+        hotelId, name, description, status, totalUnits, unitsAvailable, priceFromCents,
+        city: slug === 'suites-hargeisa' ? 'Hargeisa' : 'Mogadishu',
+        expectedCompletion: months > 0 ? parseIsoDate(addDays(today, months * 30)) : null,
+      },
+    });
+  }
+}
+
 async function seedHotel(cfg: HotelSeed, passwordHash: string, primary: boolean) {
   const today = todayInTimezone(cfg.timezone);
   const hotel = await prisma.hotel.create({
@@ -247,6 +301,7 @@ async function seedHotel(cfg: HotelSeed, passwordHash: string, primary: boolean)
       currency: 'USD',
       timezone: cfg.timezone,
       taxRateBps: cfg.taxRateBps,
+      verified: true,
     },
   });
 
@@ -279,10 +334,10 @@ async function seedHotel(cfg: HotelSeed, passwordHash: string, primary: boolean)
       data: { email: primary ? 'cashier@guryeeye.com' : `cashier@${cfg.emailDomain}`, name: 'Deeqa Nur', role: 'POS_CASHIER', hotelId: hotel.id, passwordHash },
     }),
     propertyManager: await prisma.user.create({
-      data: { email: primary ? 'property@guryeeye.com' : `property@${cfg.emailDomain}`, name: 'Ilhan Abdi', role: 'PROPERTY_MANAGER', hotelId: hotel.id, passwordHash },
+      data: { email: primary ? 'property@guryeeye.com' : `property@${cfg.emailDomain}`, name: primary ? 'Ilhan Abdi' : 'Saeed Dahir', role: 'PROPERTY_MANAGER', hotelId: hotel.id, passwordHash },
     }),
     salesAgent: await prisma.user.create({
-      data: { email: primary ? 'sales@guryeeye.com' : `sales@${cfg.emailDomain}`, name: 'Bashir Yusuf', role: 'SALES_AGENT', hotelId: hotel.id, passwordHash },
+      data: { email: primary ? 'sales@guryeeye.com' : `sales@${cfg.emailDomain}`, name: primary ? 'Bashir Yusuf' : 'Ubah Gurey', role: 'SALES_AGENT', hotelId: hotel.id, passwordHash },
     }),
   };
   const housekeepers = await Promise.all(
@@ -499,6 +554,7 @@ async function seedHotel(cfg: HotelSeed, passwordHash: string, primary: boolean)
 
   const leases = await seedRentals(hotel.id, cfg.slug, today);
   const listings = await seedSales(hotel.id, cfg.slug, staff.salesAgent.id);
+  await seedPropertyManagement(hotel.id, cfg.slug);
 
   return { hotel, rooms: rooms.length, leases, listings, staff, housekeepers };
 }
@@ -508,6 +564,9 @@ async function main() {
 
   console.log('Clearing existing data…');
   await prisma.$transaction([
+    prisma.project.deleteMany(),
+    prisma.rentalInquiry.deleteMany(),
+    prisma.maintenanceRequest.deleteMany(),
     prisma.saleTransaction.deleteMany(),
     prisma.saleLead.deleteMany(),
     prisma.saleListing.deleteMany(),

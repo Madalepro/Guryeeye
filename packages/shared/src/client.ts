@@ -4,6 +4,7 @@ import type {
   AutoGenerateTasksResponse,
   CheckInRequest,
   CloseSaleRequest,
+  CreateMaintenanceRequest,
   CreateHotelRequest,
   CreateHousekeepingTaskRequest,
   CreateLeaseRequest,
@@ -19,12 +20,22 @@ import type {
   LeaseDto,
   LoginRequest,
   LoginResponse,
+  MaintenanceRequestDto,
+  MarketplaceStats,
   PayPosOrderRequest,
   PayRentRequest,
   PlatformAnalytics,
   PlatformOverview,
   PosOrderDto,
   PosOutletDto,
+  PublicAgent,
+  PublicHotel,
+  PublicInquiryRequest,
+  PublicListing,
+  PublicListingQuery,
+  PublicProject,
+  RegisterRequest,
+  RentalInquiryDto,
   RentalPropertyDto,
   RentalsOverview,
   RentPaymentDto,
@@ -39,6 +50,7 @@ import type {
   StaffMemberDto,
   TenantDto,
   UpdateHousekeepingTaskRequest,
+  UpdateMaintenanceRequest,
   UpdateRoomStatusRequest,
   UpdateSaleLeadRequest,
   UpdateSaleListingRequest,
@@ -48,6 +60,7 @@ import type {
   HousekeepingTaskStatus,
   LeaseStatus,
   ListingStatus,
+  MaintenanceStatus,
   PosOrderStatus,
   RentPaymentStatus,
   ReservationStatus,
@@ -124,6 +137,17 @@ export function createApiClient(opts: ApiClientOptions) {
     auth: {
       login: (body: LoginRequest) => request<LoginResponse>('POST', '/auth/login', body),
       me: () => request<AuthUser>('GET', '/auth/me'),
+      register: (body: RegisterRequest) => request<LoginResponse>('POST', '/auth/register', body),
+    },
+
+    marketplace: {
+      stats: () => request<MarketplaceStats>('GET', '/public/stats'),
+      listings: (query?: PublicListingQuery) =>
+        request<PublicListing[]>('GET', '/public/listings', undefined, query as Query | undefined),
+      inquire: (body: PublicInquiryRequest) => request<{ ok: true }>('POST', '/public/inquiries', body),
+      hotels: () => request<PublicHotel[]>('GET', '/public/hotels'),
+      agents: () => request<PublicAgent[]>('GET', '/public/agents'),
+      projects: () => request<PublicProject[]>('GET', '/public/projects'),
     },
 
     hotels: {
@@ -220,6 +244,18 @@ export function createApiClient(opts: ApiClientOptions) {
       transactions: (hotelId: string) => request<SaleTransactionDto[]>('GET', `${h(hotelId)}/sales/transactions`),
     },
 
+    rpm: {
+      maintenance: (hotelId: string, query?: { status?: MaintenanceStatus }) =>
+        request<MaintenanceRequestDto[]>('GET', `${h(hotelId)}/rpm/maintenance`, undefined, query),
+      createMaintenance: (hotelId: string, body: CreateMaintenanceRequest) =>
+        request<MaintenanceRequestDto>('POST', `${h(hotelId)}/rpm/maintenance`, body),
+      updateMaintenance: (hotelId: string, id: string, body: UpdateMaintenanceRequest) =>
+        request<MaintenanceRequestDto>('PATCH', `${h(hotelId)}/rpm/maintenance/${id}`, body),
+      inquiries: (hotelId: string) => request<RentalInquiryDto[]>('GET', `${h(hotelId)}/rpm/inquiries`),
+      handleInquiry: (hotelId: string, id: string) =>
+        request<RentalInquiryDto>('POST', `${h(hotelId)}/rpm/inquiries/${id}/handled`, {}),
+    },
+
     analytics: {
       summary: (hotelId: string, query: { from: IsoDate; to: IsoDate }) =>
         request<PlatformAnalytics>('GET', `${h(hotelId)}/analytics`, undefined, query),
@@ -227,6 +263,8 @@ export function createApiClient(opts: ApiClientOptions) {
 
     admin: {
       overview: () => request<PlatformOverview>('GET', '/admin/overview'),
+      setVerified: (accountId: string, verified: boolean) =>
+        request<{ id: string; verified: boolean }>('PATCH', `/admin/accounts/${encodeURIComponent(accountId)}`, { verified }),
     },
   };
 }

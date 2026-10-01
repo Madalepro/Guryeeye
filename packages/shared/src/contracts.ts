@@ -3,6 +3,8 @@ import type {
   HousekeepingTaskStatus,
   HousekeepingTaskType,
   LeadStage,
+  MaintenanceStatus,
+  ProjectStatus,
   LeaseStatus,
   ListingStatus,
   PaymentMethod,
@@ -46,6 +48,15 @@ export interface AuthUser {
 export interface LoginResponse {
   accessToken: string;
   user: AuthUser;
+}
+
+export interface RegisterRequest {
+  businessName: string;
+  city: string;
+  country: string;
+  name: string;
+  email: string;
+  password: string;
 }
 
 // ---------- Hotels ----------
@@ -537,10 +548,18 @@ export interface PlatformOverview {
     volumeLast30DaysCents: number;
     commissionLast30DaysCents: number;
   };
+  marketplace: {
+    forRent: number;
+    forSale: number;
+    projects: number;
+    openMaintenance: number;
+    newInquiries: number;
+  };
   /** Per-account totals across every service, trailing 30 days. */
   accountStats: {
     id: string;
     name: string;
+    verified: boolean;
     city: string;
     currency: string;
     hotelRevenueCents: number;
@@ -561,3 +580,127 @@ export type HotelEvent =
   | { type: 'reservation.updated'; hotelId: string; reservation: ReservationDto };
 
 export type HotelEventType = HotelEvent['type'];
+
+// ---------- Property management (RPM) ----------
+
+export interface MaintenanceRequestDto {
+  id: string;
+  title: string;
+  description: string | null;
+  priority: TaskPriority;
+  status: MaintenanceStatus;
+  costCents: number | null;
+  createdAt: IsoDateTime;
+  resolvedAt: IsoDateTime | null;
+  unit: { id: string; label: string; status: UnitStatus };
+  property: { id: string; name: string };
+  tenantName: string | null;
+}
+
+export interface CreateMaintenanceRequest {
+  unitId: string;
+  title: string;
+  description?: string;
+  priority?: TaskPriority;
+  /** Take the unit off the market while the work is done (vacant units only). */
+  blockUnit?: boolean;
+}
+
+export interface UpdateMaintenanceRequest {
+  status?: MaintenanceStatus;
+  priority?: TaskPriority;
+  costCents?: number | null;
+}
+
+export interface RentalInquiryDto {
+  id: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  message: string | null;
+  handled: boolean;
+  createdAt: IsoDateTime;
+  unit: { id: string; label: string; status: UnitStatus };
+  property: { id: string; name: string };
+}
+
+// ---------- Public marketplace ----------
+
+export interface PublicListing {
+  id: string;
+  kind: 'rent' | 'sale';
+  title: string;
+  type: PropertyType;
+  city: string;
+  address: string;
+  bedrooms: number | null;
+  areaSqm: number | null;
+  /** Monthly rent for rentals, asking price for sales. */
+  priceCents: number;
+  currency: string;
+  status: 'AVAILABLE' | 'UNDER_OFFER';
+  listedBy: { accountId: string; name: string };
+  verified: boolean;
+}
+
+export interface PublicListingQuery {
+  kind?: 'rent' | 'sale';
+  city?: string;
+  type?: PropertyType;
+  minBedrooms?: number;
+  maxPriceCents?: number;
+  q?: string;
+}
+
+export interface PublicInquiryRequest {
+  listingId: string;
+  kind: 'rent' | 'sale';
+  name: string;
+  phone: string;
+  email?: string;
+  message?: string;
+}
+
+export interface PublicHotel {
+  id: string;
+  name: string;
+  city: string;
+  country: string;
+  currency: string;
+  rooms: number;
+  availableTonight: number;
+  fromRateCents: number | null;
+  roomTypes: { name: string; baseRateCents: number; capacity: number }[];
+}
+
+export interface PublicAgent {
+  id: string;
+  name: string;
+  role: 'SALES_AGENT' | 'PROPERTY_MANAGER';
+  agency: { id: string; name: string; city: string };
+  activeListings: number;
+  propertiesSold: number;
+  managedUnits: number;
+}
+
+export interface PublicProject {
+  id: string;
+  name: string;
+  city: string;
+  description: string;
+  status: ProjectStatus;
+  totalUnits: number;
+  unitsAvailable: number;
+  priceFromCents: number;
+  currency: string;
+  expectedCompletion: IsoDate | null;
+  developer: string;
+}
+
+export interface MarketplaceStats {
+  forRent: number;
+  forSale: number;
+  hotels: number;
+  agents: number;
+  cities: string[];
+}

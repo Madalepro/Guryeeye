@@ -12,12 +12,14 @@ import { EventsModule } from './events/events.module';
 import { HealthController } from './health/health.controller';
 import { HotelsModule } from './hotels/hotels.module';
 import { HousekeepingModule } from './housekeeping/housekeeping.module';
+import { MarketplaceModule } from './marketplace/marketplace.module';
 import { PosModule } from './pos/pos.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RentalsModule } from './rentals/rentals.module';
 import { ReportsModule } from './reports/reports.module';
 import { ReservationsModule } from './reservations/reservations.module';
 import { RoomsModule } from './rooms/rooms.module';
+import { RpmModule } from './rpm/rpm.module';
 import { SalesModule } from './sales/sales.module';
 
 @Module({
@@ -35,6 +37,8 @@ import { SalesModule } from './sales/sales.module';
     ReportsModule,
     RentalsModule,
     SalesModule,
+    RpmModule,
+    MarketplaceModule,
     AnalyticsModule,
     AdminModule,
   ],

@@ -140,6 +140,32 @@ export const LeadStage = {
 } as const;
 export type LeadStage = (typeof LeadStage)[keyof typeof LeadStage];
 
+export const MaintenanceStatus = {
+  OPEN: 'OPEN',
+  IN_PROGRESS: 'IN_PROGRESS',
+  RESOLVED: 'RESOLVED',
+} as const;
+export type MaintenanceStatus = (typeof MaintenanceStatus)[keyof typeof MaintenanceStatus];
+
+export const ProjectStatus = {
+  PLANNING: 'PLANNING',
+  UNDER_CONSTRUCTION: 'UNDER_CONSTRUCTION',
+  COMPLETED: 'COMPLETED',
+} as const;
+export type ProjectStatus = (typeof ProjectStatus)[keyof typeof ProjectStatus];
+
+export const MAINTENANCE_STATUS_LABELS: Record<MaintenanceStatus, string> = {
+  OPEN: 'Open',
+  IN_PROGRESS: 'In progress',
+  RESOLVED: 'Resolved',
+};
+
+export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
+  PLANNING: 'Off-plan',
+  UNDER_CONSTRUCTION: 'Under construction',
+  COMPLETED: 'Ready to move in',
+};
+
 export const PROPERTY_TYPE_LABELS: Record<PropertyType, string> = {
   APARTMENT: 'Apartment',
   HOUSE: 'House',

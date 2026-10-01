@@ -1,10 +1,15 @@
-import { Controller, Get } from '@nestjs/common';
+import { Body, Controller, Get, NotFoundException, Param, Patch } from '@nestjs/common';
+import { IsBoolean } from 'class-validator';
 import { addDays, todayInTimezone, type PlatformOverview } from '@guryeeye/shared';
 import { PlatformAdminOnly } from '../auth/auth.decorators';
 import { hotelSummaryInclude, toHotelSummary } from '../common/mappers';
 import { PrismaService } from '../prisma/prisma.service';
 import { RentalsService } from '../rentals/rentals.service';
 import { ReportsService } from '../reports/reports.service';
+
+class SetVerifiedDto {
+  @IsBoolean() verified: boolean;
+}
 
 const OPEN_LEAD_STAGES = ['NEW', 'CONTACTED', 'VIEWING', 'NEGOTIATION'] as const;
 
@@ -35,6 +40,10 @@ export class AdminController {
       listingsByAccount,
       openLeads,
       salesByAccount,
+      forRent,
+      projects,
+      openMaintenance,
+      newInquiries,
     ] = await Promise.all([
       this.prisma.hotel.findMany({ include: hotelSummaryInclude, orderBy: { name: 'asc' } }),
       this.prisma.room.count(),
@@ -53,6 +62,10 @@ export class AdminController {
         _count: true,
         _sum: { priceCents: true, commissionCents: true },
       }),
+      this.prisma.rentalUnit.count({ where: { status: 'VACANT' } }),
+      this.prisma.project.count(),
+      this.prisma.maintenanceRequest.count({ where: { status: { not: 'RESOLVED' } } }),
+      this.prisma.rentalInquiry.count({ where: { handled: false } }),
     ]);
 
     const hotelStats = await Promise.all(
@@ -72,6 +85,7 @@ export class AdminController {
       return {
         id: h.id,
         name: h.name,
+        verified: hotels.find((x) => x.id === h.id)!.verified,
         city: h.city,
         currency: h.currency,
         hotelRevenueCents: h.revenueLast30DaysCents,
@@ -105,7 +119,21 @@ export class AdminController {
         volumeLast30DaysCents: salesByAccount.reduce((s, x) => s + (x._sum.priceCents ?? 0), 0),
         commissionLast30DaysCents: salesByAccount.reduce((s, x) => s + (x._sum.commissionCents ?? 0), 0),
       },
+      marketplace: {
+        forRent,
+        forSale: listingsByAccount.reduce((s, l) => s + l._count, 0),
+        projects,
+        openMaintenance,
+        newInquiries,
+      },
       accountStats,
     };
+  }
+
+  @Patch('accounts/:accountId')
+  async setVerified(@Param('accountId') id: string, @Body() body: SetVerifiedDto): Promise<{ id: string; verified: boolean }> {
+    const updated = await this.prisma.hotel.updateMany({ where: { id }, data: { verified: body.verified } });
+    if (updated.count === 0) throw new NotFoundException('Account not found');
+    return { id, verified: body.verified };
   }
 }

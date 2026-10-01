@@ -25,4 +25,6 @@ export type EnumParity = [
   Assert<Same<Db.RentPaymentStatus, Shared.RentPaymentStatus>>,
   Assert<Same<Db.ListingStatus, Shared.ListingStatus>>,
   Assert<Same<Db.LeadStage, Shared.LeadStage>>,
+  Assert<Same<Db.MaintenanceStatus, Shared.MaintenanceStatus>>,
+  Assert<Same<Db.ProjectStatus, Shared.ProjectStatus>>,
 ];
