@@ -1,0 +1,318 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enum values are mirrored in packages/shared/src/domain.ts.
+// src/common/enum-parity.ts fails the backend build if the two drift.
+
+enum UserRole {
+  PLATFORM_ADMIN
+  HOTEL_OWNER
+  MANAGER
+  FRONT_DESK
+  HOUSEKEEPER
+  POS_CASHIER
+}
+
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  RESERVED
+  OUT_OF_ORDER
+  MAINTENANCE
+}
+
+enum Cleanliness {
+  CLEAN
+  DIRTY
+  CLEANING
+  INSPECTED
+}
+
+enum ReservationStatus {
+  CONFIRMED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+  NO_SHOW
+}
+
+enum HousekeepingTaskType {
+  CHECKOUT_CLEAN
+  STAYOVER
+  DEEP_CLEAN
+  INSPECTION
+  TURNDOWN
+  MAINTENANCE
+}
+
+enum HousekeepingTaskStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+  VERIFIED
+}
+
+enum TaskPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum PosOutletType {
+  RESTAURANT
+  BAR
+  ROOM_SERVICE
+  SPA
+  MINIBAR
+}
+
+enum PosOrderStatus {
+  OPEN
+  PAID
+  CHARGED_TO_ROOM
+  VOID
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  MOBILE_MONEY
+  ROOM_CHARGE
+}
+
+enum FolioSource {
+  ROOM
+  POS
+  OTHER
+}
+
+model Hotel {
+  id         String   @id @default(cuid())
+  name       String
+  slug       String   @unique
+  city       String
+  country    String
+  currency   String   @default("USD") @db.Char(3)
+  timezone   String   @default("UTC")
+  /// Tax rate in basis points, e.g. 1500 = 15%
+  taxRateBps Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  users             User[]
+  roomTypes         RoomType[]
+  rooms             Room[]
+  guests            Guest[]
+  reservations      Reservation[]
+  housekeepingTasks HousekeepingTask[]
+  posOutlets        PosOutlet[]
+  posOrders         PosOrder[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         UserRole
+  active       Boolean  @default(true)
+  hotelId      String?
+  hotel        Hotel?   @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  assignedTasks HousekeepingTask[] @relation("TaskAssignee")
+  posOrders     PosOrder[]         @relation("OrderCreator")
+
+  @@index([hotelId, role])
+}
+
+model RoomType {
+  id            String @id @default(cuid())
+  hotelId       String
+  hotel         Hotel  @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  name          String
+  code          String
+  baseRateCents Int
+  capacity      Int    @default(2)
+
+  rooms        Room[]
+  reservations Reservation[]
+
+  @@unique([hotelId, code])
+}
+
+model Room {
+  id          String      @id @default(cuid())
+  hotelId     String
+  hotel       Hotel       @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  roomTypeId  String
+  roomType    RoomType    @relation(fields: [roomTypeId], references: [id], onDelete: Restrict)
+  number      String
+  floor       Int
+  status      RoomStatus  @default(AVAILABLE)
+  cleanliness Cleanliness @default(CLEAN)
+  notes       String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  reservations      Reservation[]
+  housekeepingTasks HousekeepingTask[]
+
+  @@unique([hotelId, number])
+  @@index([hotelId, status])
+}
+
+model Guest {
+  id        String   @id @default(cuid())
+  hotelId   String
+  hotel     Hotel    @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  firstName String
+  lastName  String
+  email     String?
+  phone     String?
+  createdAt DateTime @default(now())
+
+  reservations Reservation[]
+
+  @@index([hotelId, email])
+}
+
+model Reservation {
+  id         String            @id @default(cuid())
+  hotelId    String
+  hotel      Hotel             @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  guestId    String
+  guest      Guest             @relation(fields: [guestId], references: [id], onDelete: Restrict)
+  roomTypeId String
+  roomType   RoomType          @relation(fields: [roomTypeId], references: [id], onDelete: Restrict)
+  roomId     String?
+  room       Room?             @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  status     ReservationStatus @default(CONFIRMED)
+  checkIn    DateTime          @db.Date
+  checkOut   DateTime          @db.Date
+  adults     Int               @default(1)
+  /// Nightly rate in minor units
+  rateCents  Int
+  source     String            @default("DIRECT")
+  checkedInAt  DateTime?
+  checkedOutAt DateTime?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  folioLines FolioLine[]
+  posOrders  PosOrder[]
+
+  @@index([hotelId, checkIn, checkOut])
+  @@index([hotelId, status])
+  @@index([roomId, status])
+}
+
+model FolioLine {
+  id            String      @id @default(cuid())
+  reservationId String
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  description   String
+  amountCents   Int
+  source        FolioSource
+  posOrderId    String?     @unique
+  posOrder      PosOrder?   @relation(fields: [posOrderId], references: [id], onDelete: SetNull)
+  postedAt      DateTime    @default(now())
+
+  @@index([reservationId])
+}
+
+model HousekeepingTask {
+  id          String                 @id @default(cuid())
+  hotelId     String
+  hotel       Hotel                  @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  roomId      String
+  room        Room                   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  type        HousekeepingTaskType
+  status      HousekeepingTaskStatus @default(PENDING)
+  priority    TaskPriority           @default(NORMAL)
+  assigneeId  String?
+  assignee    User?                  @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  notes       String?
+  dueAt       DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+  verifiedAt  DateTime?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  @@index([hotelId, status])
+  @@index([roomId, status])
+}
+
+model PosOutlet {
+  id      String        @id @default(cuid())
+  hotelId String
+  hotel   Hotel         @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  name    String
+  type    PosOutletType
+  active  Boolean       @default(true)
+
+  items  PosItem[]
+  orders PosOrder[]
+}
+
+model PosItem {
+  id         String    @id @default(cuid())
+  outletId   String
+  outlet     PosOutlet @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  name       String
+  category   String
+  priceCents Int
+  active     Boolean   @default(true)
+
+  lines PosOrderLine[]
+
+  @@index([outletId, active])
+}
+
+model PosOrder {
+  id            String         @id @default(cuid())
+  number        Int            @default(autoincrement())
+  hotelId       String
+  hotel         Hotel          @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  outletId      String
+  outlet        PosOutlet      @relation(fields: [outletId], references: [id], onDelete: Restrict)
+  status        PosOrderStatus @default(OPEN)
+  subtotalCents Int
+  taxCents      Int
+  totalCents    Int
+  paymentMethod PaymentMethod?
+  reservationId String?
+  reservation   Reservation?   @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  createdById   String?
+  createdBy     User?          @relation("OrderCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt     DateTime       @default(now())
+  closedAt      DateTime?
+
+  lines     PosOrderLine[]
+  folioLine FolioLine?
+
+  @@index([hotelId, status])
+  @@index([hotelId, closedAt])
+}
+
+model PosOrderLine {
+  id             String   @id @default(cuid())
+  orderId        String
+  order          PosOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  itemId         String
+  item           PosItem  @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  /// Item name and price are snapshotted so later menu edits don't rewrite history
+  name           String
+  quantity       Int
+  unitPriceCents Int
+  lineTotalCents Int
+}

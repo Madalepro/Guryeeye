@@ -1,0 +1,19 @@
+{
+  "name": "@guryeeye/tailwind-config",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Guryeeye brand design tokens as a Tailwind CSS preset",
+  "main": "preset.js",
+  "types": "preset.d.ts",
+  "files": [
+    "preset.js",
+    "preset.d.ts"
+  ],
+  "scripts": {
+    "build": "node -e \"require('./preset.js')\"",
+    "typecheck": "node -e \"require('./preset.js')\""
+  },
+  "peerDependencies": {
+    "tailwindcss": "^3.4.0"
+  }
+}
